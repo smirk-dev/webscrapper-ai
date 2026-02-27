@@ -102,6 +102,12 @@ pytest tests/
 - Pipeline tests: **18 passed** (`tests/test_pipeline`)
 - Collector registry smoke test: **12 collectors listed** (`run_collectors.py --list`)
 
+## Production Deployment (Supabase + Streamlit Cloud)
+
+Use the full deployment runbook here:
+
+- `docs/deployment_supabase_streamlit.md`
+
 ## Working Roadmap
 
 Use this as your execution plan and tick items as you complete them.
