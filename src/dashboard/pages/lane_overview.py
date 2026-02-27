@@ -8,7 +8,10 @@ Shows:
 """
 
 import asyncio
+import subprocess
+import sys
 from datetime import date, timedelta
+from pathlib import Path
 
 import plotly.graph_objects as go
 import streamlit as st
@@ -18,6 +21,77 @@ from src.db.models import Event, HealthStatus, IndexType, LaneHealth, TradeLane
 from src.db.session import async_session
 
 st.title("Lane Overview — UK-India Textiles")
+
+ROOT_DIR = Path(__file__).resolve().parents[3]
+
+
+def _run_script(args: list[str]) -> tuple[bool, str]:
+    result = subprocess.run(
+        [sys.executable, *args],
+        cwd=ROOT_DIR,
+        capture_output=True,
+        text=True,
+        timeout=1800,
+    )
+    output = (result.stdout or "") + ("\n" + result.stderr if result.stderr else "")
+    return result.returncode == 0, output.strip()
+
+
+with st.expander("Data Refresh", expanded=False):
+    st.caption("Run ingestion and lane-health recomputation directly from this page.")
+
+    run_collectors_and_pipeline = st.button(
+        "Run Collectors + Pipeline (no LLM)",
+        use_container_width=True,
+    )
+    run_pipeline_only = st.button(
+        "Run Pipeline Only",
+        use_container_width=True,
+    )
+
+    if run_collectors_and_pipeline:
+        with st.status("Running collectors and pipeline...", expanded=True) as status:
+            ok_collect, out_collect = _run_script(
+                [
+                    "scripts/run_collectors.py",
+                    "--all",
+                    "--persist",
+                    "--no-llm",
+                    "--lane",
+                    "UK-India",
+                ]
+            )
+            if not ok_collect:
+                status.update(label="Collector run failed", state="error")
+                st.error("Collector run failed. See output below.")
+                st.code("\n".join(out_collect.splitlines()[-120:]))
+                st.stop()
+
+            ok_pipe, out_pipe = _run_script(["scripts/run_pipeline.py", "--lane", "UK-India"])
+            if not ok_pipe:
+                status.update(label="Pipeline run failed", state="error")
+                st.error("Pipeline run failed. See output below.")
+                st.code("\n".join(out_pipe.splitlines()[-120:]))
+                st.stop()
+
+            status.update(label="Collectors and pipeline completed", state="complete")
+            st.success("Data refresh complete.")
+            st.code("\n".join(out_pipe.splitlines()[-60:]))
+            st.rerun()
+
+    if run_pipeline_only:
+        with st.status("Running pipeline...", expanded=True) as status:
+            ok_pipe, out_pipe = _run_script(["scripts/run_pipeline.py", "--lane", "UK-India"])
+            if not ok_pipe:
+                status.update(label="Pipeline run failed", state="error")
+                st.error("Pipeline run failed. See output below.")
+                st.code("\n".join(out_pipe.splitlines()[-120:]))
+                st.stop()
+
+            status.update(label="Pipeline completed", state="complete")
+            st.success("Pipeline completed and lane health updated.")
+            st.code("\n".join(out_pipe.splitlines()[-60:]))
+            st.rerun()
 
 
 async def get_latest_health():
