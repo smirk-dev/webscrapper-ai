@@ -69,7 +69,12 @@ def _check_tcp(host: str, port: int, timeout: float = 5.0) -> tuple[bool, str]:
 
 async def _check_asyncpg(url: str) -> tuple[bool, str]:
     try:
-        conn = await asyncpg.connect(url, timeout=10)
+        host = urlsplit(url).hostname or ""
+        connect_kwargs = {"timeout": 10}
+        if "pooler.supabase.com" in host:
+            connect_kwargs["statement_cache_size"] = 0
+
+        conn = await asyncpg.connect(url, **connect_kwargs)
         try:
             value = await conn.fetchval("select 1")
             return True, f"Query ok (select 1 => {value})"
