@@ -39,8 +39,37 @@ playwright install
 ### 3) Database
 
 ```bash
-alembic upgrade head
-python scripts/seed_db.py
+python scripts/bootstrap_db.py
+```
+
+For offline/local development when cloud Postgres is unavailable:
+
+```bash
+python scripts/bootstrap_db.py --local
+```
+
+### Troubleshooting (Windows + Python 3.14)
+
+If `alembic upgrade head` hangs or errors while importing SQLAlchemy, use:
+
+```powershell
+python scripts/bootstrap_db.py
+```
+
+`bootstrap_db.py` sets `DISABLE_SQLALCHEMY_CEXT_RUNTIME=1` automatically on Windows with Python 3.14+.
+
+If bootstrap fails with timeout/network errors (e.g. `WinError 121`), run:
+
+```powershell
+python scripts/check_db_connection.py
+```
+
+This checks DNS, TCP reachability, and asyncpg login using your current `DATABASE_URL`.
+
+If cloud DB connectivity still fails, continue locally with:
+
+```powershell
+python scripts/bootstrap_db.py --local
 ```
 
 ### 4) Run
@@ -49,6 +78,16 @@ python scripts/seed_db.py
 python scripts/run_collectors.py --list
 python scripts/run_collectors.py --all
 python scripts/run_pipeline.py --lane UK-India
+streamlit run src/dashboard/app.py
+```
+
+Local/offline run path:
+
+```powershell
+python scripts/bootstrap_db.py --local
+python scripts/run_collectors.py --all --persist --no-llm --local
+python scripts/run_pipeline.py --local --lane UK-India
+$env:DATABASE_URL = "sqlite+aiosqlite:///./advuman_local.db"
 streamlit run src/dashboard/app.py
 ```
 
@@ -75,7 +114,8 @@ Use this as your execution plan and tick items as you complete them.
 - [ ] Add robust retry/backoff + timeout policy for HTTP/Playwright collectors
 - [ ] Add structured logging for collectors/pipeline runs
 
-**Exit criteria**
+### Phase 1 Exit Criteria
+
 - [ ] CI green on every PR
 - [ ] Database can be recreated from migrations only
 - [ ] Collectors fail gracefully without crashing batch run
@@ -88,7 +128,8 @@ Use this as your execution plan and tick items as you complete them.
 - [ ] Add duplicate-event detection (URL + date + title hash)
 - [ ] Add reviewed/override workflow for analyst corrections
 
-**Exit criteria**
+### Phase 2 Exit Criteria
+
 - [ ] Invalid classifier responses do not break ingestion
 - [ ] Duplicate events are suppressed or linked
 - [ ] Manual review path exists for low-confidence signals
@@ -100,7 +141,8 @@ Use this as your execution plan and tick items as you complete them.
 - [ ] Add attribution consistency checks (percent sums and pathway splits)
 - [ ] Parameterize EWMA/CUSUM per lane/index in config
 
-**Exit criteria**
+### Phase 3 Exit Criteria
+
 - [ ] Weekly run produces reproducible metrics
 - [ ] Dashboard always has a complete snapshot series to render
 
@@ -111,7 +153,8 @@ Use this as your execution plan and tick items as you complete them.
 - [ ] Add health trend summary cards (1w/4w delta)
 - [ ] Add CSV export for lane health + snapshots
 
-**Exit criteria**
+### Phase 4 Exit Criteria
+
 - [ ] Non-technical user can read current status and top drivers in <2 mins
 - [ ] Dashboard supports at least 2 lanes without code changes
 
@@ -122,7 +165,8 @@ Use this as your execution plan and tick items as you complete them.
 - [ ] Add alerting hooks for WATCH/ACTIVE transitions
 - [ ] Add basic runbook docs for incident handling
 
-**Exit criteria**
+### Phase 5 Exit Criteria
+
 - [ ] Daily automation runs unattended
 - [ ] Failures are visible with actionable logs
 - [ ] Health state changes can trigger notifications
@@ -132,10 +176,10 @@ Use this as your execution plan and tick items as you complete them.
 - Keep stacked feature branches for large multi-part work.
 - Open one PR per feature area (DB, collectors, pipeline, dashboard, config).
 - Use PR templates with:
-	- scope summary,
-	- validation commands run,
-	- screenshots (dashboard changes),
-	- rollout notes.
+  - scope summary,
+  - validation commands run,
+  - screenshots (dashboard changes),
+  - rollout notes.
 
 ## Project Layout
 

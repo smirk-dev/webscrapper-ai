@@ -15,9 +15,9 @@ st.set_page_config(
 # Navigation
 pg = st.navigation(
     [
-        st.Page("src/dashboard/pages/lane_overview.py", title="Lane Overview", icon="📊", default=True),
-        st.Page("src/dashboard/pages/signal_log.py", title="Signal Log", icon="📋"),
-        st.Page("src/dashboard/pages/index_charts.py", title="Index Charts", icon="📈"),
+        st.Page("pages/lane_overview.py", title="Lane Overview", icon="📊", default=True),
+        st.Page("pages/signal_log.py", title="Signal Log", icon="📋"),
+        st.Page("pages/index_charts.py", title="Index Charts", icon="📈"),
     ]
 )
 
