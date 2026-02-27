@@ -48,7 +48,7 @@ python scripts/run_pipeline.py --lane UK-India
 3. Configure:
    - **Repository**: this repo
    - **Branch**: `main`
-   - **Main file path**: `src/dashboard/app.py`
+   - **Main file path**: `streamlit_app.py`
 4. In **Advanced settings → Secrets**, add:
 
 ```toml

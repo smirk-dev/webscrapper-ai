@@ -59,10 +59,27 @@ def run_local_schema_create() -> None:
     from sqlalchemy.ext.asyncio import create_async_engine
 
     from src.config import settings
+    from src.db.engine import get_async_engine_options
     from src.db.models import Base
 
     async def _create() -> None:
-        engine = create_async_engine(settings.database_url, echo=False)
+        engine = create_async_engine(settings.database_url, **get_async_engine_options(settings.database_url))
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        await engine.dispose()
+
+    asyncio.run(_create())
+
+
+def ensure_schema_exists() -> None:
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from src.config import settings
+    from src.db.engine import get_async_engine_options
+    from src.db.models import Base
+
+    async def _create() -> None:
+        engine = create_async_engine(settings.database_url, **get_async_engine_options(settings.database_url))
         async with engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)
         await engine.dispose()
@@ -79,6 +96,7 @@ if __name__ == "__main__":
             print(f"Local schema ready: {db_path}")
         else:
             run_migrations()
+            ensure_schema_exists()
         run_seed()
         print("Database bootstrap complete.")
     except Exception as exc:
