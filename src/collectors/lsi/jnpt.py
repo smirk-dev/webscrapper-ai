@@ -35,10 +35,11 @@ class JNPTCollector(BaseCollector):
             return await self._collect_playwright()
 
     async def _collect_http(self) -> list[RawEvent]:
+        target_url = self.get_scrape_url()
         async with httpx.AsyncClient(
             timeout=30, follow_redirects=True, headers=DEFAULT_HEADERS
         ) as client:
-            resp = await client.get(JNPT_URL)
+            resp = await client.get(target_url)
             resp.raise_for_status()
             return await self.parse(resp.text)
 
@@ -49,7 +50,7 @@ class JNPTCollector(BaseCollector):
             async with async_playwright() as p:
                 browser = await p.chromium.launch(headless=True)
                 page = await browser.new_page()
-                await page.goto(JNPT_URL, wait_until="domcontentloaded", timeout=30000)
+                await page.goto(self.get_scrape_url(), wait_until="domcontentloaded", timeout=30000)
                 html = await page.content()
                 await browser.close()
                 return await self.parse(html)
@@ -58,7 +59,7 @@ class JNPTCollector(BaseCollector):
                 RawEvent(
                     title="JNPT - Collection Failed",
                     content="Playwright not installed. Install with: playwright install chromium",
-                    url=JNPT_URL,
+                    url=self.source_url,
                     published_date=date.today(),
                 )
             ]
@@ -78,7 +79,7 @@ class JNPTCollector(BaseCollector):
                     RawEvent(
                         title="JNPT Port Advisory",
                         content=text[:500],
-                        url=JNPT_URL,
+                        url=self.source_url,
                         published_date=date.today(),
                     )
                 )
@@ -88,7 +89,8 @@ class JNPTCollector(BaseCollector):
             text = link.get_text(strip=True)
             if any(kw in text.lower() for kw in ["advisory", "congestion", "notice", "operation"]):
                 href = link.get("href", "")
-                full_url = href if href.startswith("http") else f"https://www.jnport.gov.in{href}"
+                origin = self.get_source_origin() or "https://www.jnport.gov.in"
+                full_url = href if href.startswith("http") else f"{origin}{href}"
                 events.append(
                     RawEvent(
                         title=text,
@@ -103,7 +105,7 @@ class JNPTCollector(BaseCollector):
                 RawEvent(
                     title="JNPT - No Advisories",
                     content="No port advisories or congestion notices found on homepage.",
-                    url=JNPT_URL,
+                    url=self.source_url,
                     published_date=date.today(),
                 )
             )
