@@ -31,6 +31,7 @@ class CottonCollector(BaseCollector):
     check_frequency = "weekly"
 
     async def collect(self) -> list[RawEvent]:
+        target_url = self.get_scrape_url()
         async with httpx.AsyncClient(
             timeout=30,
             follow_redirects=True,
@@ -42,7 +43,7 @@ class CottonCollector(BaseCollector):
             },
         ) as client:
             try:
-                resp = await client.get(ICAC_URL)
+                resp = await client.get(target_url)
                 resp.raise_for_status()
                 return await self.parse(resp.text)
             except httpx.HTTPError:
@@ -50,7 +51,7 @@ class CottonCollector(BaseCollector):
                     RawEvent(
                         title="Cotton Price Check - Fetch Failed",
                         content="Could not reach ICAC cotton price page. Manual check required.",
-                        url=ICAC_URL,
+                        url=self.source_url,
                         published_date=date.today(),
                     )
                 ]
@@ -65,7 +66,7 @@ class CottonCollector(BaseCollector):
             RawEvent(
                 title="Cotton Weekly Price Check",
                 content=page_text,
-                url=ICAC_URL,
+                url=self.source_url,
                 published_date=date.today(),
             )
         ]

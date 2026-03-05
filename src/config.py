@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://localhost:5432/advuman"
     anthropic_api_key: str = ""
+    sources_sheet_csv_url: str = ""
 
     # EWMA decay parameters (lambda = 1 - 2^(-1/H), H = half-life in days)
     ewma_lambda_rpi: float = 0.048  # 14-day half-life

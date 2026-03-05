@@ -31,6 +31,7 @@ class FreightRateCollector(BaseCollector):
     check_frequency = "weekly"
 
     async def collect(self) -> list[RawEvent]:
+        target_url = self.get_scrape_url()
         async with httpx.AsyncClient(
             timeout=30,
             follow_redirects=True,
@@ -42,7 +43,7 @@ class FreightRateCollector(BaseCollector):
             },
         ) as client:
             try:
-                resp = await client.get(FBX_URL)
+                resp = await client.get(target_url)
                 resp.raise_for_status()
                 return await self.parse(resp.text)
             except httpx.HTTPError:
@@ -50,7 +51,7 @@ class FreightRateCollector(BaseCollector):
                     RawEvent(
                         title="FBX Freight Rate - Fetch Failed",
                         content="Could not reach Freightos. Manual check required.",
-                        url=FBX_URL,
+                        url=self.source_url,
                         published_date=date.today(),
                     )
                 ]
@@ -63,7 +64,7 @@ class FreightRateCollector(BaseCollector):
             RawEvent(
                 title="FBX Weekly Freight Rate Check",
                 content=page_text,
-                url=FBX_URL,
+                url=self.source_url,
                 published_date=date.today(),
             )
         ]

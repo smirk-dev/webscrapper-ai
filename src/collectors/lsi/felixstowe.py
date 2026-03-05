@@ -30,10 +30,11 @@ class FelixstoweCollector(BaseCollector):
     check_frequency = "daily"
 
     async def collect(self) -> list[RawEvent]:
+        target_url = self.get_scrape_url()
         async with httpx.AsyncClient(
             timeout=30, follow_redirects=True, headers=DEFAULT_HEADERS
         ) as client:
-            resp = await client.get(FELIXSTOWE_URL)
+            resp = await client.get(target_url)
             resp.raise_for_status()
             return await self.parse(resp.text)
 
@@ -54,7 +55,8 @@ class FelixstoweCollector(BaseCollector):
                 link = link_el.get("href", "") if link_el else ""
 
             if link and not link.startswith("http"):
-                link = f"https://www.portoffelixstowe.co.uk{link}"
+                origin = self.get_source_origin() or "https://www.portoffelixstowe.co.uk"
+                link = f"{origin}{link}"
 
             content_el = article.select_one("p, .excerpt, .summary")
             content = content_el.get_text(strip=True) if content_el else title
@@ -74,7 +76,7 @@ class FelixstoweCollector(BaseCollector):
                 RawEvent(
                     title=title,
                     content=content,
-                    url=link or FELIXSTOWE_URL,
+                    url=link or self.source_url,
                     published_date=pub_date or date.today(),
                 )
             )
@@ -85,7 +87,7 @@ class FelixstoweCollector(BaseCollector):
                 RawEvent(
                     title="Port of Felixstowe - No Updates",
                     content="No operational news items found. Baseline confirmed.",
-                    url=FELIXSTOWE_URL,
+                    url=self.source_url,
                     published_date=date.today(),
                 )
             )

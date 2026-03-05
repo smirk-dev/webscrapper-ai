@@ -81,6 +81,50 @@ python scripts/run_pipeline.py --lane UK-India
 streamlit run src/dashboard/app.py
 ```
 
+### Dynamic Source Management (Google Sheets)
+
+You can make collector sources dynamic so R&D/Marketing can update links without code changes.
+
+1. Create a Google Sheet with these columns:
+`collector, enabled, source_name, source_url, scrape_url, check_frequency`
+2. Keep `collector` values aligned with collector keys from:
+`python scripts/run_collectors.py --list`
+3. Publish the sheet as CSV and copy the CSV URL.
+4. Set in `.env`:
+
+```bash
+SOURCES_SHEET_CSV_URL=https://docs.google.com/spreadsheets/d/<SHEET_ID>/export?format=csv&gid=0
+```
+
+Behavior:
+
+- `--all` runs only collectors where `enabled=true` (or blank).
+- `--source ...` still runs exactly the requested collectors, even if disabled in the sheet.
+- `source_url` updates source metadata.
+- `scrape_url` controls the actual fetch endpoint used by collectors.
+- `check_frequency` supports `daily` or `weekly` and updates persisted source metadata.
+
+Template file: `docs/source_config_template.csv`
+
+Validation:
+
+```bash
+python scripts/validate_source_sheet.py
+python scripts/validate_source_sheet.py --strict
+```
+
+Scheduling (auto sync + scrape + pipeline):
+
+```bash
+python scripts/schedule_sync_scrape.py --lane UK-India --minutes 60 --no-llm
+python scripts/schedule_sync_scrape.py --lane UK-India --daily-at 09:00 --no-llm
+```
+
+Run logging:
+
+- Scheduled runs are recorded in `pipeline_runs` and visible in the dashboard `Source Admin` page.
+- If your database was created before this feature, run `python scripts/bootstrap_db.py` once to ensure new tables exist.
+
 Local/offline run path:
 
 ```powershell

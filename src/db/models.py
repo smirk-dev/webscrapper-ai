@@ -85,6 +85,12 @@ class CheckFrequency(str, enum.Enum):
     WEEKLY = "weekly"
 
 
+class RunStatus(str, enum.Enum):
+    STARTED = "started"
+    SUCCESS = "success"
+    FAILED = "failed"
+
+
 # ── Models ───────────────────────────────────────────────────────────────────
 
 
@@ -107,6 +113,9 @@ class TradeLane(Base):
         back_populates="trade_lane"
     )
     lane_health_records: Mapped[list["LaneHealth"]] = relationship(
+        back_populates="trade_lane"
+    )
+    pipeline_runs: Mapped[list["PipelineRun"]] = relationship(
         back_populates="trade_lane"
     )
 
@@ -255,3 +264,21 @@ class LaneHealth(Base):
     trade_lane: Mapped["TradeLane"] = relationship(
         back_populates="lane_health_records"
     )
+
+
+class PipelineRun(Base):
+    """Execution log for scheduled/manual collector + pipeline runs."""
+
+    __tablename__ = "pipeline_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    trade_lane_id: Mapped[int | None] = mapped_column(ForeignKey("trade_lanes.id"), nullable=True)
+    trigger: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
+    stage: Mapped[str] = mapped_column(String(30), nullable=False, default="collectors+pipeline")
+    status: Mapped[RunStatus] = mapped_column(Enum(RunStatus), nullable=False, default=RunStatus.STARTED)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    trade_lane: Mapped["TradeLane | None"] = relationship(back_populates="pipeline_runs")

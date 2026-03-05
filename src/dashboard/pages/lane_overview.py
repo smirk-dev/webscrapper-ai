@@ -17,7 +17,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from sqlalchemy import func, select
 
-from src.db.models import Event, HealthStatus, IndexType, LaneHealth, TradeLane
+from src.db.models import Event, HealthStatus, IndexType, LaneHealth, PipelineRun, RunStatus, TradeLane
 from src.db.session import async_session
 
 st.title("Lane Overview — UK-India Textiles")
@@ -137,11 +137,39 @@ async def get_index_totals():
         return totals
 
 
+async def get_run_health(window: int = 25) -> dict:
+    async with async_session() as session:
+        result = await session.execute(
+            select(PipelineRun)
+            .join(TradeLane, PipelineRun.trade_lane_id == TradeLane.id, isouter=True)
+            .where((TradeLane.name == "UK-India") | (PipelineRun.trade_lane_id.is_(None)))
+            .order_by(PipelineRun.started_at.desc())
+            .limit(window)
+        )
+        runs = list(result.scalars().all())
+
+    total = len(runs)
+    successful = sum(1 for run in runs if run.status == RunStatus.SUCCESS)
+    failed = [run for run in runs if run.status == RunStatus.FAILED]
+    last_run = runs[0] if runs else None
+    last_failure = failed[0] if failed else None
+
+    success_rate = (successful / total * 100.0) if total else 0.0
+    return {
+        "total": total,
+        "success_rate": success_rate,
+        "last_run_status": last_run.status.value if last_run else "no-data",
+        "last_run_started_at": last_run.started_at if last_run else None,
+        "last_failure_at": last_failure.started_at if last_failure else None,
+    }
+
+
 # Run async queries
 try:
     health = asyncio.run(get_latest_health())
     events = asyncio.run(get_week_events())
     totals = asyncio.run(get_index_totals())
+    run_health = asyncio.run(get_run_health())
 except Exception as e:
     st.error(f"Database connection error: {e}")
     st.info("Make sure your .env file has the correct DATABASE_URL and the database is accessible.")
@@ -172,6 +200,15 @@ else:
 col2.metric("RPI (Regulatory)", f"+{totals.get('RPI', 0)}")
 col3.metric("LSI (Logistics)", f"+{totals.get('LSI', 0)}")
 col4.metric("CPI (Cost)", f"+{totals.get('CPI', 0)}")
+
+st.caption("Run Health (last 25 automation runs)")
+run_col1, run_col2, run_col3 = st.columns(3)
+run_col1.metric("Automation Success Rate", f"{run_health['success_rate']:.0f}%")
+run_col2.metric("Last Run Status", run_health["last_run_status"].upper())
+run_col3.metric(
+    "Last Failure",
+    str(run_health["last_failure_at"]) if run_health["last_failure_at"] else "None in window",
+)
 
 st.divider()
 

@@ -28,10 +28,11 @@ class UKFTCollector(BaseCollector):
     check_frequency = "daily"
 
     async def collect(self) -> list[RawEvent]:
+        target_url = self.get_scrape_url()
         async with httpx.AsyncClient(
             timeout=30, follow_redirects=True, headers=DEFAULT_HEADERS
         ) as client:
-            resp = await client.get(UKFT_URL)
+            resp = await client.get(target_url)
             resp.raise_for_status()
             return await self.parse(resp.text)
 
@@ -48,7 +49,7 @@ class UKFTCollector(BaseCollector):
 
             title = title_el.get_text(strip=True)
             href = title_el.get("href", "") if title_el.name == "a" else ""
-            url = href if href.startswith("http") else UKFT_URL
+            url = href if href.startswith("http") else self.source_url
 
             excerpt_el = article.select_one("p, .excerpt, .entry-summary")
             content = excerpt_el.get_text(strip=True) if excerpt_el else title

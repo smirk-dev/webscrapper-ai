@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import date
+from urllib.parse import urlsplit
 
 from src.db.models import (
     ConfidenceLevel,
@@ -79,3 +80,14 @@ class BaseCollector(ABC):
     async def parse(self, raw_html: str) -> list[RawEvent]:
         """Parse raw HTML/content into structured raw events."""
         ...
+
+    def get_scrape_url(self) -> str:
+        """Return the runtime URL used for HTTP/Playwright fetches."""
+        return getattr(self, "scrape_url", self.source_url)
+
+    def get_source_origin(self) -> str:
+        """Return scheme + host from scrape URL for resolving relative links."""
+        parsed = urlsplit(self.get_scrape_url())
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}"
+        return ""

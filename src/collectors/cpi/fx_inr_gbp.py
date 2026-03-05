@@ -26,11 +26,13 @@ XE_URL = "https://www.xe.com/currencyconverter/convert/?Amount=1&From=INR&To=GBP
 class FXINRGBPCollector(BaseCollector):
     source_name = "INR/GBP Exchange Rate (XE.com)"
     source_url = "https://www.xe.com/currencycharts/?from=INR&to=GBP"
+    scrape_url = XE_URL
     source_layer = SourceLayer.MARKET
     primary_index = IndexType.CPI
     check_frequency = "daily"
 
     async def collect(self) -> list[RawEvent]:
+        target_url = self.get_scrape_url()
         async with httpx.AsyncClient(
             timeout=30,
             follow_redirects=True,
@@ -42,7 +44,7 @@ class FXINRGBPCollector(BaseCollector):
                 )
             },
         ) as client:
-            resp = await client.get(XE_URL)
+            resp = await client.get(target_url)
             resp.raise_for_status()
             return await self.parse(resp.text)
 

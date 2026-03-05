@@ -28,15 +28,17 @@ HMRC_SEARCH_URL = (
 class HMRCCollector(BaseCollector):
     source_name = "HMRC / UK Customs Update"
     source_url = "https://www.gov.uk/government/organisations/hm-revenue-customs"
+    scrape_url = HMRC_SEARCH_URL
     source_layer = SourceLayer.PRIMARY
     primary_index = IndexType.RPI
     check_frequency = "daily"
 
     async def collect(self) -> list[RawEvent]:
+        target_url = self.get_scrape_url()
         async with httpx.AsyncClient(
             timeout=30, follow_redirects=True, headers=DEFAULT_HEADERS
         ) as client:
-            resp = await client.get(HMRC_SEARCH_URL)
+            resp = await client.get(target_url)
             resp.raise_for_status()
             return await self.parse(resp.text)
 
@@ -51,7 +53,8 @@ class HMRCCollector(BaseCollector):
 
             title = link_el.get_text(strip=True)
             href = link_el.get("href", "")
-            url = f"https://www.gov.uk{href}" if href.startswith("/") else href
+            origin = self.get_source_origin() or "https://www.gov.uk"
+            url = f"{origin}{href}" if href.startswith("/") else href
 
             desc_el = result.select_one(".gem-c-document-list__item-description")
             description = desc_el.get_text(strip=True) if desc_el else ""

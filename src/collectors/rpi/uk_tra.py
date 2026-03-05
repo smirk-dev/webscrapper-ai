@@ -28,10 +28,11 @@ class UKTRACollector(BaseCollector):
     check_frequency = "weekly"
 
     async def collect(self) -> list[RawEvent]:
+        target_url = self.get_scrape_url()
         async with httpx.AsyncClient(
             timeout=30, follow_redirects=True, headers=DEFAULT_HEADERS
         ) as client:
-            resp = await client.get(TRA_URL)
+            resp = await client.get(target_url)
             resp.raise_for_status()
             return await self.parse(resp.text)
 
@@ -53,13 +54,14 @@ class UKTRACollector(BaseCollector):
                 title = link_el.get_text(strip=True)
                 href = link_el.get("href", "")
                 if href and not href.startswith("http"):
-                    href = f"https://www.trade-remedies.service.gov.uk{href}"
+                    origin = self.get_source_origin() or "https://www.trade-remedies.service.gov.uk"
+                    href = f"{origin}{href}"
 
             events.append(
                 RawEvent(
                     title=title,
                     content=text,
-                    url=href or TRA_URL,
+                    url=href or self.source_url,
                     published_date=date.today(),
                 )
             )
