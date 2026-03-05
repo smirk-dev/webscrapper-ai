@@ -40,6 +40,7 @@ def build_navigation():
             st.Page(str(pages_dir / "lane_overview.py"), title="Lane Overview", icon="📊", default=True),
             st.Page(str(pages_dir / "signal_log.py"), title="Signal Log", icon="📋"),
             st.Page(str(pages_dir / "index_charts.py"), title="Index Charts", icon="📈"),
+            st.Page(str(pages_dir / "source_admin.py"), title="Source Admin", icon="🧭"),
         ]
     )
 
