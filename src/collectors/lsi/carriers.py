@@ -33,6 +33,7 @@ class CarrierCollector(BaseCollector):
         return events
 
     async def _collect_maersk(self) -> list[RawEvent]:
+        target_url = self.get_scrape_url()
         async with httpx.AsyncClient(
             timeout=30,
             follow_redirects=True,
@@ -44,7 +45,7 @@ class CarrierCollector(BaseCollector):
             },
         ) as client:
             try:
-                resp = await client.get(MAERSK_ADVISORIES_URL)
+                resp = await client.get(target_url)
                 resp.raise_for_status()
                 return await self.parse(resp.text)
             except httpx.HTTPError:
@@ -52,7 +53,7 @@ class CarrierCollector(BaseCollector):
                     RawEvent(
                         title="Maersk Advisories - Fetch Failed",
                         content="Could not reach Maersk advisory page. Manual check required.",
-                        url=MAERSK_ADVISORIES_URL,
+                        url=self.source_url,
                         published_date=date.today(),
                     )
                 ]
@@ -76,7 +77,8 @@ class CarrierCollector(BaseCollector):
                     href = link_el.get("href", "")
 
             if href and not href.startswith("http"):
-                href = f"https://www.maersk.com{href}"
+                origin = self.get_source_origin() or "https://www.maersk.com"
+                href = f"{origin}{href}"
 
             content_el = article.select_one("p, .description, .excerpt")
             content = content_el.get_text(strip=True) if content_el else title
@@ -88,7 +90,7 @@ class CarrierCollector(BaseCollector):
                     RawEvent(
                         title=title,
                         content=content,
-                        url=href or MAERSK_ADVISORIES_URL,
+                        url=href or self.source_url,
                         published_date=date.today(),
                     )
                 )
