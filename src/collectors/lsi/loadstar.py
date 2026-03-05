@@ -28,10 +28,11 @@ class LoadstarCollector(BaseCollector):
     check_frequency = "daily"
 
     async def collect(self) -> list[RawEvent]:
+        target_url = self.get_scrape_url()
         async with httpx.AsyncClient(
             timeout=30, follow_redirects=True, headers=DEFAULT_HEADERS
         ) as client:
-            resp = await client.get(LOADSTAR_SEARCH_URL)
+            resp = await client.get(target_url)
             resp.raise_for_status()
             return await self.parse(resp.text)
 
@@ -45,7 +46,7 @@ class LoadstarCollector(BaseCollector):
                 continue
 
             title = title_el.get_text(strip=True)
-            url = title_el.get("href", LOADSTAR_SEARCH_URL)
+            url = title_el.get("href", self.source_url)
 
             excerpt_el = article.select_one("p, .excerpt, .entry-summary")
             content = excerpt_el.get_text(strip=True) if excerpt_el else title
