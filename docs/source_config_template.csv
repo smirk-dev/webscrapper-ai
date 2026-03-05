@@ -1,0 +1,13 @@
+collector,enabled,source_name,source_url,scrape_url,check_frequency
+hmrc,TRUE,HMRC / UK Customs Update,https://www.gov.uk/government/organisations/hm-revenue-customs,https://www.gov.uk/search/all?keywords=textiles+india+customs&organisations%5B%5D=hm-revenue-customs&order=updated-newest,daily
+dgft,TRUE,DGFT (India) Notifications,https://dgft.gov.in/,https://dgft.gov.in/CP/?opt=notification,daily
+ukft,TRUE,UKFT (UK Fashion & Textile Association),https://www.ukft.org/news/,https://www.ukft.org/news/,daily
+uk_tra,TRUE,UK Trade Remedies Authority,https://www.trade-remedies.service.gov.uk/public/cases/,https://www.trade-remedies.service.gov.uk/public/cases/,weekly
+jnpt,TRUE,JNPT (Nhava Sheva) Port Advisory,https://www.jnport.gov.in/,https://www.jnport.gov.in/,daily
+felixstowe,TRUE,Port of Felixstowe,https://www.portoffelixstowe.co.uk/operations/news/,https://www.portoffelixstowe.co.uk/operations/news/,daily
+carriers,TRUE,Carrier Service Notice (Maersk/MSC),https://www.maersk.com/news/advisories,https://www.maersk.com/news/advisories,daily
+loadstar,TRUE,The Loadstar,https://theloadstar.com/?s=india,https://theloadstar.com/?s=india,daily
+fx_inr_gbp,TRUE,INR/GBP Exchange Rate (XE.com),https://www.xe.com/currencycharts/?from=INR&to=GBP,https://www.xe.com/currencyconverter/convert/?Amount=1&From=INR&To=GBP,daily
+cotton,TRUE,Cotton Benchmark (ICAC),https://www.icac.org/Market-Information/Cotton-Prices,https://www.icac.org/Market-Information/Cotton-Prices,weekly
+freight_rates,TRUE,Freightos Baltic Index (FBX),https://fbx.freightos.com/,https://fbx.freightos.com/,weekly
+forwarder_posts,TRUE,Freight Forwarder Advisory (UK),,,daily
