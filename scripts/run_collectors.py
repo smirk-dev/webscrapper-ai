@@ -32,6 +32,7 @@ import src.collectors.cpi.forwarder_posts  # noqa: F401
 
 from src.collectors.registry import get_collector, list_collectors
 from src.collectors.base import ClassifiedEvent
+from src.collectors.source_config import SourceOverride, load_source_overrides
 from src.db.models import (
     CheckFrequency,
     ConfidenceLevel,
@@ -46,6 +47,7 @@ from src.db.models import (
     TradeLane,
     WeightedScore,
 )
+from src.config import settings
 
 SOURCE_WEIGHTS = {
     SourceLayer.PRIMARY: 1.0,
@@ -186,6 +188,15 @@ async def _get_or_create_source(session, collector, lane_id: int) -> OsintSource
     )
     source = result.scalar_one_or_none()
     if source:
+        # Keep metadata aligned with runtime overrides when source config changes.
+        expected_frequency = (
+            CheckFrequency.DAILY
+            if collector.check_frequency == "daily"
+            else CheckFrequency.WEEKLY
+        )
+        source.name = collector.source_name
+        source.url = collector.source_url
+        source.check_frequency = expected_frequency
         return source
 
     source = OsintSource(
@@ -208,7 +219,6 @@ async def _persist_events(events, collector, lane_name: str, use_llm: bool) -> i
     from sqlalchemy import select
 
     from src.collectors.classifier import classify_event
-    from src.config import settings
     from src.db.session import async_session
     from src.pipeline.scoring import compute_weighted_score
 
@@ -289,13 +299,43 @@ async def _persist_events(events, collector, lane_name: str, use_llm: bool) -> i
         return inserted
 
 
-async def run_single(name: str, *, persist: bool, lane_name: str, use_llm: bool) -> None:
+def _apply_override(name: str, collector, override: SourceOverride | None) -> None:
+    if override is None:
+        # Collectors can use scrape_url when provided dynamically.
+        collector.scrape_url = collector.source_url
+        return
+
+    if override.source_name:
+        collector.source_name = override.source_name
+    if override.source_url:
+        collector.source_url = override.source_url
+    if override.check_frequency:
+        collector.check_frequency = override.check_frequency
+
+    collector.scrape_url = override.scrape_url or override.source_url or collector.source_url
+
+
+def _enabled_collectors(names: list[str], overrides: dict[str, SourceOverride]) -> list[str]:
+    if not overrides:
+        return names
+    return [name for name in names if overrides.get(name) is None or overrides[name].enabled]
+
+
+async def run_single(
+    name: str,
+    *,
+    persist: bool,
+    lane_name: str,
+    use_llm: bool,
+    overrides: dict[str, SourceOverride],
+) -> None:
     print(f"\n{'='*60}")
     print(f"Running collector: {name}")
     print(f"{'='*60}")
 
     collector_cls = get_collector(name)
     collector = collector_cls()
+    _apply_override(name, collector, overrides.get(name))
 
     try:
         events = await collector.collect()
@@ -319,6 +359,17 @@ async def main(args: argparse.Namespace) -> None:
         os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path.as_posix()}"
         print(f"Using local SQLite DB: {db_path}")
 
+    overrides: dict[str, SourceOverride] = {}
+    if settings.sources_sheet_csv_url:
+        try:
+            overrides = await load_source_overrides(settings.sources_sheet_csv_url)
+            print(
+                f"Loaded dynamic source config for {len(overrides)} collector(s) "
+                f"from {settings.sources_sheet_csv_url}"
+            )
+        except Exception as exc:
+            print(f"WARNING: Could not load dynamic source config: {exc}")
+
     if args.list:
         print("Available collectors:")
         for name in list_collectors():
@@ -326,9 +377,16 @@ async def main(args: argparse.Namespace) -> None:
         return
 
     if args.all:
-        names = list_collectors()
+        names = _enabled_collectors(list_collectors(), overrides)
+        if overrides:
+            disabled = sorted(set(list_collectors()) - set(names))
+            if disabled:
+                print(f"Skipping disabled collectors from source config: {', '.join(disabled)}")
     else:
         names = args.source
+        for name in names:
+            if overrides.get(name) is not None and not overrides[name].enabled:
+                print(f"WARNING: Collector '{name}' is disabled in source config but was explicitly requested.")
 
     if not names:
         print("No collectors specified. Use --all or --source <name>")
@@ -340,6 +398,7 @@ async def main(args: argparse.Namespace) -> None:
             persist=args.persist,
             lane_name=args.lane,
             use_llm=not args.no_llm,
+            overrides=overrides,
         )
 
     print(f"\nDone. Ran {len(names)} collector(s).")
