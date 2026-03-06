@@ -1,0 +1,37 @@
+# Local Docker stack: Streamlit dashboard + background worker.
+#
+# Usage:
+#   docker compose up --build          # start both services
+#   docker compose up web              # dashboard only
+#   docker compose up worker           # scheduler only
+#
+# Requires a .env file with DATABASE_URL and ANTHROPIC_API_KEY.
+
+services:
+  web:
+    build: .
+    ports:
+      - "8501:8501"
+    env_file: .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  worker:
+    build: .
+    env_file: .env
+    # Runs collectors + pipeline daily at 06:00 (container local time = UTC).
+    # Change --daily-at or swap for --minutes N for interval-based scheduling.
+    # Add --no-llm to disable LLM classification and cut API costs.
+    command:
+      - python
+      - scripts/schedule_sync_scrape.py
+      - --lane
+      - UK-India
+      - --daily-at
+      - "06:00"
+    restart: unless-stopped
