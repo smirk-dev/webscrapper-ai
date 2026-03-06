@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh repo view smirk-dev/webscrapper-ai --json name,url,isPrivate)",
+      "Bash(gh secret list --repo smirk-dev/webscrapper-ai)",
+      "Bash(gh workflow list --repo smirk-dev/webscrapper-ai)",
+      "Bash(gh workflow run daily_collect_pipeline.yml --repo smirk-dev/webscrapper-ai)",
+      "Bash(gh run list --repo smirk-dev/webscrapper-ai --workflow daily_collect_pipeline.yml --limit 1)"
+    ]
+  }
+}
