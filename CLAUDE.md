@@ -12,10 +12,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 OSINT Collectors (12 sources) → PostgreSQL → Quant Pipeline → Streamlit Dashboard
 ```
 
-- **Collectors** (`src/collectors/`): Scrape 12 OSINT sources per trade lane using httpx/BeautifulSoup/Playwright, then classify raw events into the 18-column schema via Claude API (LLM-assisted).
+- **Collectors** (`src/collectors/`): Scrape 12 OSINT sources per trade lane using httpx/BeautifulSoup/Playwright, then classify raw events into the 18-column schema via Claude API (LLM-assisted) or keyword-heuristic fallback.
 - **Pipeline** (`src/pipeline/`): Weighted scoring → EWMA rolling baseline → z-score standardization → CUSUM detection → weekly roll-up → attribution decomposition.
-- **Dashboard** (`src/dashboard/`): Streamlit app with 3 pages: Lane Overview, Signal Log, Index Charts.
-- **Database**: PostgreSQL (cloud) via SQLAlchemy async. 6 tables: `trade_lanes`, `osint_sources`, `events`, `weighted_scores`, `index_snapshots`, `lane_health`.
+- **Dashboard** (`src/dashboard/`): Streamlit app with 5 pages: Lane Overview, Signal Log, Index Charts, Source Admin, plus the main app entry.
+- **Database**: PostgreSQL (cloud) via SQLAlchemy async. 7 tables: `trade_lanes`, `osint_sources`, `events`, `weighted_scores`, `index_snapshots`, `lane_health`, `pipeline_runs`.
 
 ## Three Composite Indices
 
@@ -27,7 +27,7 @@ OSINT Collectors (12 sources) → PostgreSQL → Quant Pipeline → Streamlit Da
 
 Combined = sum of weekly RPI + LSI + CPI deltas.
 
-## Weight Matrix (Danha's sprint plan)
+## Weight Matrix
 
 ```text
 WeightedScore = Delta × SourceWeight × StatusWeight × ConfidenceWeight × PrecedentWeight
@@ -39,63 +39,69 @@ Precedent:  Novel=1.2, Known=1.0
 
 ## Environment Setup
 
-Before developing, configure:
-
 ```bash
 # 1. Create .env file with:
 ANTHROPIC_API_KEY=sk-...
 DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/advuman
+# Optional: dynamic source config from Google Sheets
+SOURCES_SHEET_CSV_URL=https://docs.google.com/spreadsheets/d/<ID>/export?format=csv&gid=0
 
-# 2. Install Playwright browsers (for Felixstowe and Loadstar collectors):
+# 2. Install with dev dependencies
+pip install -e ".[dev]"
+
+# 3. Install Playwright browsers (for Felixstowe and Loadstar collectors)
 playwright install
 ```
 
-**Important**: Use Python 3.11+ (3.13+ recommended). On Windows, use the official Python installer, not the Microsoft Store version.
+**Python**: Use 3.11+ (3.13+ recommended). On Windows, use the official Python installer — the Microsoft Store `python` alias resolves to the wrong install. The correct path is `/c/Users/surya/AppData/Local/Programs/Python/Python314/python.exe`.
 
 ## Commands
 
 ```bash
-pip install -e ".[dev]"           # Install with dev dependencies
-
 # Database
-alembic upgrade head              # Run migrations
-python scripts/seed_db.py         # Seed UK-India OSINT sources
+python scripts/bootstrap_db.py            # Create tables (cloud DB)
+python scripts/bootstrap_db.py --local    # Create tables (local SQLite for offline dev)
+python scripts/check_db_connection.py     # Diagnose cloud DB connectivity
 
-# Collectors (12 sources across RPI/LSI/CPI)
-python scripts/run_collectors.py --list          # List all 12 collectors
-python scripts/run_collectors.py --all           # Run all collectors
-python scripts/run_collectors.py --source hmrc felixstowe  # Run specific collectors
+# Collectors
+python scripts/run_collectors.py --list                          # List all 12 collectors
+python scripts/run_collectors.py --all --persist --no-llm        # Run all, persist, skip LLM
+python scripts/run_collectors.py --source hmrc felixstowe --persist  # Run specific collectors
+python scripts/run_collectors.py --all --persist --no-llm --local   # Offline mode (SQLite)
 
-# Pipeline (quant scoring, anomaly detection, weekly rollup)
-python scripts/run_pipeline.py --lane UK-India   # Run index computation
+# Pipeline
+python scripts/run_pipeline.py --lane UK-India           # Run index computation
+python scripts/run_pipeline.py --local --lane UK-India   # Run against local SQLite
+
+# Scheduling (auto sync from Google Sheets + scrape + pipeline)
+python scripts/schedule_sync_scrape.py --lane UK-India --minutes 60 --no-llm
+python scripts/schedule_sync_scrape.py --lane UK-India --daily-at 09:00 --no-llm
+
+# Source config validation
+python scripts/validate_source_sheet.py
+python scripts/validate_source_sheet.py --strict
 
 # Dashboard
-streamlit run src/dashboard/app.py               # Launch Streamlit app (3 pages)
+streamlit run src/dashboard/app.py
+# For local SQLite: set DATABASE_URL=sqlite+aiosqlite:///./advuman_local.db first
 
 # Tests
 pytest tests/                     # Run all tests
 pytest tests/test_pipeline/       # Run pipeline tests only
 pytest tests/test_pipeline/test_scoring.py::test_weight_matrix  # Run specific test
-pytest tests/ -v --tb=short       # Verbose output with short tracebacks
-pytest tests/ --cov=src           # Run with coverage report
+pytest tests/ -v --tb=short       # Verbose with short tracebacks
+pytest tests/ --cov=src           # With coverage
 ```
 
 ## Collector Implementation Pattern
 
-All collectors extend `BaseCollector` (in `src/collectors/base.py`) and follow this flow:
+All collectors extend `BaseCollector` (`src/collectors/base.py`) and follow this flow:
 
 1. **Scrape** → `RawEvent` (title, content, url, published_date)
-2. **Classify** → `ClassifiedEvent` via Claude API (18-column schema, all enum-validated)
-3. **Persist** → Store `weighted_scores` in PostgreSQL
+2. **Classify** → `ClassifiedEvent` via Claude API (18-column schema, all enum-validated) or keyword-heuristic fallback when `--no-llm`
+3. **Persist** → Store `events` + `weighted_scores` in database
 
-**Key**: Register collectors with `@register("name")` decorator. Collectors must be **imported** in `scripts/run_collectors.py` to auto-register (see line 18-29).
-
-**18-Column ClassifiedEvent Schema**:
-
-- Metadata: date_observed, source_layer, source_name, source_url
-- Classification: event_type, jurisdiction, sector, affected_object, event_description
-- Assessment: event_status, confidence_level, historical_precedent, impact_pathway, quant_metric_triggered
-- Quantization: index_impact (RPI/LSI/CPI), index_delta (+1/0/-1), analyst_notes
+**Registration**: Use `@register("name")` decorator. New collectors must be **imported** in `scripts/run_collectors.py` (lines 20-31) to auto-register.
 
 **Collector Families** (all async):
 
@@ -109,38 +115,22 @@ All collectors extend `BaseCollector` (in `src/collectors/base.py`) and follow t
 - HMRC may return 0 results depending on search terms
 - Cotton (ICAC) & Freight Rates (FBX) require LLM text extraction from page (no structured data)
 
-## Key Files
+## Dynamic Source Management
 
-- `src/config.py` — Settings (DB URL, API keys, EWMA lambda, CUSUM params)
-- `src/db/models.py` — SQLAlchemy ORM models (6 tables, all enums)
-- `src/db/seed.py` — 12 UK-India OSINT sources + weight matrix constants
-- `src/db/session.py` — AsyncSession factory for async SQLAlchemy
-- `src/collectors/base.py` — BaseCollector ABC + RawEvent/ClassifiedEvent dataclasses
-- `src/collectors/registry.py` — @register decorator and collector discovery
-- `src/collectors/classifier.py` — LLM classification prompt + Claude API integration
-- `src/pipeline/scoring.py` — Weighted signal scoring
-- `src/pipeline/ewma.py` — EWMA rolling baseline (λ=0.048, 14-day half-life)
-- `src/pipeline/zscore.py` — Z-score standardization across indices
-- `src/pipeline/cusum.py` — CUSUM persistent shift detection (k=0.5, h=4.5)
-- `src/pipeline/rollup.py` — Weekly lane health computation
-- `src/pipeline/attribution.py` — Contribution decomposition by source/pathway/jurisdiction
+Collector sources can be managed via a Google Sheet (published as CSV) so R&D/Marketing can update links without code changes. Set `SOURCES_SHEET_CSV_URL` in `.env`. The source config module (`src/collectors/source_config.py`) parses columns: `collector`, `enabled`, `source_name`, `source_url`, `scrape_url`, `check_frequency`. Template: `docs/source_config_template.csv`.
 
-## Data Flow & Key Patterns
+- `--all` runs only collectors where `enabled=true` (or blank)
+- `--source ...` runs requested collectors even if disabled in sheet
 
-**Async throughout**: All collectors, database queries, and pipeline steps are async. Use `asyncpg` + `SQLAlchemy` async and `await` everywhere. Test fixtures use synchronous in-memory SQLite via `conftest.py`.
+## Key Patterns
 
-**Weekly pipeline cycle**:
+**Async throughout**: All collectors, database queries, and pipeline steps use async. `asyncpg` + SQLAlchemy async in production; tests use synchronous in-memory SQLite via `conftest.py`.
 
-1. Collectors scrape 12 OSINT sources → `RawEvent` dataclass
-2. Classifier (Claude API) validates/enriches → `ClassifiedEvent` (18 columns)
-3. Scoring applies weight matrix (`src/config.py`) → stores `weighted_scores`
-4. EWMA computes baseline per index (rolling 14-day window, λ=0.048)
-5. Z-score standardization across all sources
-6. CUSUM detects persistent shifts (k=0.5, h=4.5 → alarm on 4.5-sigma)
-7. Weekly rollup sums deltas → lane health status (STABLE/WATCH/ACTIVE)
-8. Dashboard queries snapshots and displays via Streamlit
+**Config**: `src/config.py` uses pydantic-settings `BaseSettings` loading from `.env`. The `database_url` validator auto-normalizes `postgres://` and `postgresql://` to `postgresql+asyncpg://`.
 
-**Test database**: All tests use in-memory SQLite. Async tests via `pytest-asyncio` (asyncio_mode="auto" in `pyproject.toml`).
+**Test database**: All tests use in-memory SQLite with synchronous sessions. `pytest-asyncio` with `asyncio_mode="auto"` in `pyproject.toml`.
+
+**Pipeline run logging**: Scheduled/manual runs are tracked in `pipeline_runs` table and visible on the Source Admin dashboard page.
 
 ## Trade Lanes
 
@@ -148,4 +138,5 @@ Currently implemented: **UK-India Textiles** (12 sources). Designed to expand to
 
 ## Docs
 
-`docs/` contains 18 PDFs with business plans, SOPs, OSINT source guides, sprint plans, and the 36-source annotated bibliography for the index math framework. These are the original design documents — treat as requirements reference.
+- `docs/` contains 18 PDFs with business plans, SOPs, OSINT source guides, sprint plans, and the 36-source annotated bibliography for the index math framework. Treat as requirements reference.
+- `docs/deployment_supabase_streamlit.md` — production deployment runbook for Supabase + Streamlit Cloud.
