@@ -13,7 +13,7 @@ from src.db.models import (
     SourceLayer,
     TradeLane,
 )
-from src.db.session import async_session, engine
+from src.db.session import async_session
 
 
 # ── Weight matrix (from Danha's sprint plan) ─────────────────────────────────

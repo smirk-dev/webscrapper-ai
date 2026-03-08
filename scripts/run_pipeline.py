@@ -107,7 +107,7 @@ async def run_pipeline(lane_name: str, week_start: date | None = None) -> None:
         combined, health = compute_lane_health(rpi_total, lsi_total, cpi_total)
 
         print(f"\n{'─'*60}")
-        print(f"WEEKLY ROLL-UP:")
+        print("WEEKLY ROLL-UP:")
         print(f"  RPI Total:  {rpi_total:+.0f}")
         print(f"  LSI Total:  {lsi_total:+.0f}")
         print(f"  CPI Total:  {cpi_total:+.0f}")
@@ -224,7 +224,7 @@ async def run_pipeline(lane_name: str, week_start: date | None = None) -> None:
         # Attribution
         if attribution_data:
             attr = compute_attribution(attribution_data)
-            print(f"\nATTRIBUTION:")
+            print("\nATTRIBUTION:")
             for dim, values in attr.items():
                 if values:
                     breakdown = " | ".join(f"{k}: {v:.0%}" for k, v in values.items())
