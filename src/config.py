@@ -7,7 +7,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     sources_sheet_csv_url: str = ""
 
-    # Google Sheets OSINT event log
+    # Google Sheets OSINT event log.
+    # Override via .env:
+    #   OSINT_SHEET_ID=<your-sheet-id>
+    #   OSINT_SHEET_GIDS='{"UK-India": 834780247, "UK-Egypt": 843292959}'
     osint_sheet_id: str = "1QmssLXafz3g3nOJ6YJpfHCd53LmD4MVgaiarbxGlmtM"
     osint_sheet_gids: dict[str, int] = {
         "UK-India": 834780247,
@@ -49,7 +52,7 @@ class Settings(BaseSettings):
 
         return normalized
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "env_parse_none_str": "null"}
 
 
 settings = Settings()

@@ -7,15 +7,22 @@ Usage examples:
 
 import argparse
 import asyncio
+import logging
 import subprocess
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+log = logging.getLogger("advuman.scheduler")
 
 
 async def _create_run_log(lane: str, trigger: str) -> int | None:
@@ -74,14 +81,17 @@ def _run_command(args: list[str]) -> tuple[bool, str]:
     return result.returncode == 0, output.strip()
 
 
-def _job(lane: str, no_llm: bool, local: bool, sqlite_path: str) -> None:
-    print(f"\n[{datetime.now().isoformat(timespec='seconds')}] Starting scheduled run for lane={lane}")
+def _job(lane: str, no_llm: bool, local: bool, sqlite_path: str, sheet_ingest: bool) -> None:
+    log.info("Starting scheduled run for lane=%s", lane)
     run_id = None
     try:
         run_id = asyncio.run(_create_run_log(lane=lane, trigger="scheduler"))
     except Exception as exc:
-        print(f"Warning: could not create run log row: {exc}")
+        log.warning("Could not create run log row: %s", exc)
 
+    all_output: list[str] = []
+
+    # ── Stage 1: OSINT collectors ────────────────────────────────────────────
     collectors_args = [
         "scripts/run_collectors.py",
         "--all",
@@ -95,9 +105,11 @@ def _job(lane: str, no_llm: bool, local: bool, sqlite_path: str) -> None:
         collectors_args.extend(["--local", "--sqlite-path", sqlite_path])
 
     ok_collectors, out_collectors = _run_command(collectors_args)
-    print("Collectors output:\n" + "\n".join(out_collectors.splitlines()[-80:]))
+    log.info("Collectors output (last 80 lines):\n%s", "\n".join(out_collectors.splitlines()[-80:]))
+    all_output.append(out_collectors)
+
     if not ok_collectors:
-        print("Scheduled run failed at collector stage.")
+        log.error("Scheduled run failed at collector stage.")
         try:
             asyncio.run(
                 _finalize_run_log(
@@ -108,42 +120,59 @@ def _job(lane: str, no_llm: bool, local: bool, sqlite_path: str) -> None:
                 )
             )
         except Exception as exc:
-            print(f"Warning: could not finalize run log row: {exc}")
+            log.warning("Could not finalize run log row: %s", exc)
         return
 
+    # ── Stage 2: Google Sheets ingest (optional) ─────────────────────────────
+    if sheet_ingest:
+        ingest_args = ["scripts/ingest_from_sheet.py", "--lane", lane]
+        if local:
+            ingest_args.extend(["--local", "--sqlite-path", sqlite_path])
+
+        ok_ingest, out_ingest = _run_command(ingest_args)
+        log.info("Sheet ingest output:\n%s", out_ingest)
+        all_output.append(out_ingest)
+
+        if not ok_ingest:
+            # Non-fatal: log warning but continue to pipeline
+            log.warning("Sheet ingest stage failed (continuing to pipeline):\n%s", out_ingest)
+
+    # ── Stage 3: Quant pipeline ──────────────────────────────────────────────
     pipeline_args = ["scripts/run_pipeline.py", "--lane", lane]
     if local:
         pipeline_args.extend(["--local", "--sqlite-path", sqlite_path])
 
     ok_pipeline, out_pipeline = _run_command(pipeline_args)
-    print("Pipeline output:\n" + "\n".join(out_pipeline.splitlines()[-80:]))
+    log.info("Pipeline output (last 80 lines):\n%s", "\n".join(out_pipeline.splitlines()[-80:]))
+    all_output.append(out_pipeline)
+
     if not ok_pipeline:
-        print("Scheduled run failed at pipeline stage.")
+        log.error("Scheduled run failed at pipeline stage.")
         try:
             asyncio.run(
                 _finalize_run_log(
                     run_id,
                     success=False,
-                    details=f"{out_collectors}\n\n{out_pipeline}",
+                    details="\n\n".join(all_output),
                     error_summary="Pipeline stage failed",
                 )
             )
         except Exception as exc:
-            print(f"Warning: could not finalize run log row: {exc}")
+            log.warning("Could not finalize run log row: %s", exc)
         return
 
-    print(f"[{datetime.now().isoformat(timespec='seconds')}] Scheduled run completed successfully")
+    log.info("Scheduled run completed successfully for lane=%s", lane)
     try:
         asyncio.run(
             _finalize_run_log(
                 run_id,
                 success=True,
-                details=f"{out_collectors}\n\n{out_pipeline}",
+                details="\n\n".join(all_output),
                 error_summary=None,
             )
         )
     except Exception as exc:
-        print(f"Warning: could not finalize run log row: {exc}")
+        log.warning("Could not finalize run log row: %s", exc)
 
 
 def main() -> None:
@@ -158,7 +187,20 @@ def main() -> None:
     )
     parser.add_argument("--local", action="store_true", help="Use local SQLite DB")
     parser.add_argument("--sqlite-path", default="advuman_local.db", help="SQLite DB file path")
+    parser.add_argument(
+        "--sheet-ingest",
+        action="store_true",
+        help="Pull analyst events from Google Sheets after collectors and before pipeline",
+    )
     args = parser.parse_args()
+
+    job_kwargs = {
+        "lane": args.lane,
+        "no_llm": args.no_llm,
+        "local": args.local,
+        "sqlite_path": args.sqlite_path,
+        "sheet_ingest": args.sheet_ingest,
+    }
 
     scheduler = BlockingScheduler()
 
@@ -169,38 +211,33 @@ def main() -> None:
             "cron",
             hour=int(hour),
             minute=int(minute),
-            kwargs={
-                "lane": args.lane,
-                "no_llm": args.no_llm,
-                "local": args.local,
-                "sqlite_path": args.sqlite_path,
-            },
+            kwargs=job_kwargs,
             id="advuman_daily_run",
             replace_existing=True,
         )
-        print(f"Scheduled daily run at {args.daily_at} for lane={args.lane}")
+        log.info("Scheduled daily run at %s for lane=%s (sheet_ingest=%s)", args.daily_at, args.lane, args.sheet_ingest)
     else:
         scheduler.add_job(
             _job,
             "interval",
             minutes=max(args.minutes, 1),
-            kwargs={
-                "lane": args.lane,
-                "no_llm": args.no_llm,
-                "local": args.local,
-                "sqlite_path": args.sqlite_path,
-            },
+            kwargs=job_kwargs,
             id="advuman_interval_run",
             replace_existing=True,
             next_run_time=datetime.now(),
         )
-        print(f"Scheduled interval run every {max(args.minutes, 1)} minute(s) for lane={args.lane}")
+        log.info(
+            "Scheduled interval run every %d minute(s) for lane=%s (sheet_ingest=%s)",
+            max(args.minutes, 1),
+            args.lane,
+            args.sheet_ingest,
+        )
 
-    print("Press Ctrl+C to stop scheduler.")
+    log.info("Press Ctrl+C to stop scheduler.")
     try:
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
-        print("Scheduler stopped.")
+        log.info("Scheduler stopped.")
 
 
 if __name__ == "__main__":

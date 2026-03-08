@@ -53,15 +53,29 @@ async def _load_recent_runs(limit: int = 25) -> list[PipelineRun]:
 
 sheet_location = settings.sources_sheet_csv_url
 if sheet_location:
-    st.code(f"SOURCES_SHEET_CSV_URL={sheet_location}")
+    col_url, col_btn = st.columns([4, 1])
+    col_url.code(f"SOURCES_SHEET_CSV_URL={sheet_location}")
+    validate_clicked = col_btn.button("🔄 Validate Sheet Now", use_container_width=True)
 else:
     st.warning("SOURCES_SHEET_CSV_URL is not set. Showing collector defaults only.")
+    validate_clicked = False
 
 try:
     overrides = asyncio.run(_load_overrides())
 except Exception as exc:
     st.error(f"Could not load source config: {exc}")
     overrides = {}
+
+if validate_clicked and sheet_location:
+    with st.spinner("Fetching sheet config…"):
+        try:
+            fresh_overrides = asyncio.run(_load_overrides())
+            st.success(f"Sheet loaded successfully — {len(fresh_overrides)} collector override(s) found.")
+            for name, ov in fresh_overrides.items():
+                status = "✅ enabled" if ov.enabled else "🚫 disabled"
+                st.write(f"- **{name}**: {status}  |  source_name={ov.source_name or '(default)'}  |  freq={ov.check_frequency or '(default)'}")
+        except Exception as exc:
+            st.error(f"Sheet validation failed: {exc}")
 
 collectors = list_collectors()
 rows = []
@@ -112,6 +126,21 @@ st.download_button(
     "advuman_effective_source_config.csv",
     "text/csv",
 )
+
+st.divider()
+st.subheader("OSINT Event Sheet Config")
+
+osint_sheet_id = settings.osint_sheet_id
+osint_sheet_gids = settings.osint_sheet_gids
+if osint_sheet_id:
+    st.caption("Lanes configured for Google Sheets event ingestion (via `ingest_from_sheet.py` or scheduler `--sheet-ingest`).")
+    gid_rows = [{"lane": lane, "gid": gid, "csv_url": settings.sheet_tab_url(lane)} for lane, gid in osint_sheet_gids.items()]
+    st.dataframe(pd.DataFrame(gid_rows), use_container_width=True)
+    st.info(
+        "To add a new lane: set `OSINT_SHEET_GIDS='{\"UK-India\": 834780247, \"NewLane\": <gid>}'` in your `.env` file."
+    )
+else:
+    st.warning("OSINT_SHEET_ID is not configured. Sheet event ingestion is unavailable.")
 
 st.divider()
 st.subheader("Recent Automation Runs")
