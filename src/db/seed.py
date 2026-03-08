@@ -39,7 +39,7 @@ CONFIDENCE_WEIGHTS = {
 
 PRECEDENT_WEIGHTS = {
     False: 1.2,  # Novel (no precedent) — higher attention
-    True: 1.0,   # Known precedent
+    True: 1.0,  # Known precedent
 }
 
 

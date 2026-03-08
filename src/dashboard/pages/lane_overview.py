@@ -17,7 +17,15 @@ import plotly.graph_objects as go
 import streamlit as st
 from sqlalchemy import func, select
 
-from src.db.models import Event, HealthStatus, IndexType, LaneHealth, PipelineRun, RunStatus, TradeLane
+from src.db.models import (
+    Event,
+    HealthStatus,
+    IndexType,
+    LaneHealth,
+    PipelineRun,
+    RunStatus,
+    TradeLane,
+)
 from src.db.session import async_session
 
 st.title("Lane Overview — UK-India Textiles")
@@ -67,7 +75,9 @@ with st.expander("Data Refresh", expanded=False):
                 st.code("\n".join(out_collect.splitlines()[-120:]))
                 st.stop()
 
-            ok_pipe, out_pipe = _run_script(["scripts/run_pipeline.py", "--lane", "UK-India"])
+            ok_pipe, out_pipe = _run_script(
+                ["scripts/run_pipeline.py", "--lane", "UK-India"]
+            )
             if not ok_pipe:
                 status.update(label="Pipeline run failed", state="error")
                 st.error("Pipeline run failed. See output below.")
@@ -81,7 +91,9 @@ with st.expander("Data Refresh", expanded=False):
 
     if run_pipeline_only:
         with st.status("Running pipeline...", expanded=True) as status:
-            ok_pipe, out_pipe = _run_script(["scripts/run_pipeline.py", "--lane", "UK-India"])
+            ok_pipe, out_pipe = _run_script(
+                ["scripts/run_pipeline.py", "--lane", "UK-India"]
+            )
             if not ok_pipe:
                 status.update(label="Pipeline run failed", state="error")
                 st.error("Pipeline run failed. See output below.")
@@ -142,7 +154,9 @@ async def get_run_health(window: int = 25) -> dict:
         result = await session.execute(
             select(PipelineRun)
             .join(TradeLane, PipelineRun.trade_lane_id == TradeLane.id, isouter=True)
-            .where((TradeLane.name == "UK-India") | (PipelineRun.trade_lane_id.is_(None)))
+            .where(
+                (TradeLane.name == "UK-India") | (PipelineRun.trade_lane_id.is_(None))
+            )
             .order_by(PipelineRun.started_at.desc())
             .limit(window)
         )
@@ -172,7 +186,9 @@ try:
     run_health = asyncio.run(get_run_health())
 except Exception as e:
     st.error(f"Database connection error: {e}")
-    st.info("Make sure your .env file has the correct DATABASE_URL and the database is accessible.")
+    st.info(
+        "Make sure your .env file has the correct DATABASE_URL and the database is accessible."
+    )
     st.stop()
 
 # ── Lane Health Badge ──
@@ -188,7 +204,7 @@ if health:
     col1.metric("Lane Health", status.value)
     col1.markdown(
         f'<div style="background-color:{color_map.get(status, "gray")}; '
-        f'color:white; padding:10px; border-radius:5px; text-align:center; '
+        f"color:white; padding:10px; border-radius:5px; text-align:center; "
         f'font-size:24px; font-weight:bold;">{status.value}</div>',
         unsafe_allow_html=True,
     )
@@ -207,7 +223,9 @@ run_col1.metric("Automation Success Rate", f"{run_health['success_rate']:.0f}%")
 run_col2.metric("Last Run Status", run_health["last_run_status"].upper())
 run_col3.metric(
     "Last Failure",
-    str(run_health["last_failure_at"]) if run_health["last_failure_at"] else "None in window",
+    str(run_health["last_failure_at"])
+    if run_health["last_failure_at"]
+    else "None in window",
 )
 
 st.divider()
@@ -217,7 +235,9 @@ st.subheader("This Week's Signals")
 
 if events:
     for event in events[:10]:
-        delta_icon = "🔴" if event.index_delta > 0 else ("🟢" if event.index_delta < 0 else "⚪")
+        delta_icon = (
+            "🔴" if event.index_delta > 0 else ("🟢" if event.index_delta < 0 else "⚪")
+        )
         with st.expander(
             f"{delta_icon} {event.date_observed} | {event.index_impact.value} "
             f"({event.index_delta:+d}) — {event.event_description[:80]}"
@@ -249,5 +269,7 @@ if health:
             )
         ]
     )
-    fig.update_layout(title="Index Contributions", yaxis_title="Delta Total", height=300)
+    fig.update_layout(
+        title="Index Contributions", yaxis_title="Delta Total", height=300
+    )
     st.plotly_chart(fig, use_container_width=True)

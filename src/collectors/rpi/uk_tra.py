@@ -54,7 +54,10 @@ class UKTRACollector(BaseCollector):
                 title = link_el.get_text(strip=True)
                 href = link_el.get("href", "")
                 if href and not href.startswith("http"):
-                    origin = self.get_source_origin() or "https://www.trade-remedies.service.gov.uk"
+                    origin = (
+                        self.get_source_origin()
+                        or "https://www.trade-remedies.service.gov.uk"
+                    )
                     href = f"{origin}{href}"
 
             events.append(

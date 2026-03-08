@@ -36,7 +36,9 @@ async def validate(csv_location: str, strict: bool = False) -> int:
     available = set(list_collectors())
 
     if not csv_location:
-        print("ERROR: No CSV source configured. Set SOURCES_SHEET_CSV_URL or pass --csv.")
+        print(
+            "ERROR: No CSV source configured. Set SOURCES_SHEET_CSV_URL or pass --csv."
+        )
         return 2
 
     try:
@@ -54,7 +56,9 @@ async def validate(csv_location: str, strict: bool = False) -> int:
     missing = sorted(available - row_collectors)
 
     invalid_frequency = sorted(
-        name for name, row in overrides.items() if row.check_frequency is None and row.collector in available
+        name
+        for name, row in overrides.items()
+        if row.check_frequency is None and row.collector in available
     )
 
     print(f"Loaded {len(overrides)} row(s) from: {csv_location}")
@@ -71,12 +75,18 @@ async def validate(csv_location: str, strict: bool = False) -> int:
             print(f"  - {name}")
 
     if invalid_frequency:
-        print("\nRows with blank/invalid check_frequency (will keep collector default):")
+        print(
+            "\nRows with blank/invalid check_frequency (will keep collector default):"
+        )
         for name in invalid_frequency:
             print(f"  - {name}")
 
-    enabled = [name for name, row in overrides.items() if row.enabled and name in available]
-    disabled = [name for name, row in overrides.items() if not row.enabled and name in available]
+    enabled = [
+        name for name, row in overrides.items() if row.enabled and name in available
+    ]
+    disabled = [
+        name for name, row in overrides.items() if not row.enabled and name in available
+    ]
     print(f"\nEnabled: {len(enabled)} | Disabled: {len(disabled)}")
 
     has_errors = bool(unknown)
@@ -94,7 +104,9 @@ async def validate(csv_location: str, strict: bool = False) -> int:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Validate dynamic source sheet configuration")
+    parser = argparse.ArgumentParser(
+        description="Validate dynamic source sheet configuration"
+    )
     parser.add_argument("--csv", default="", help="CSV URL or local CSV path")
     parser.add_argument("--strict", action="store_true", help="Fail on warnings")
     args = parser.parse_args()

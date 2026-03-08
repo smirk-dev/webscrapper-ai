@@ -31,7 +31,9 @@ def _masked_url(url: str) -> str:
         else:
             creds = "***"
         netloc = f"{creds}@{hostpart}"
-    return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
+    return urlunsplit(
+        (parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment)
+    )
 
 
 def _asyncpg_url(url: str) -> str:
@@ -40,7 +42,9 @@ def _asyncpg_url(url: str) -> str:
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
     if query.get("sslmode") == "require" and "ssl" not in query:
         query["ssl"] = "require"
-    return urlunsplit((scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment))
+    return urlunsplit(
+        (scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment)
+    )
 
 
 def _extract_host_port(url: str) -> tuple[str | None, int]:
@@ -112,11 +116,17 @@ def main() -> int:
         print("\nDatabase connectivity looks good.")
         return 0
 
-    print("\nConnectivity check failed. Verify DATABASE_URL, firewall/VPN, host allowlist, and SSL requirements.")
+    print(
+        "\nConnectivity check failed. Verify DATABASE_URL, firewall/VPN, host allowlist, and SSL requirements."
+    )
     if "supabase.co" in host and "sslmode" not in query and "ssl" not in query:
-        print("Hint: Supabase often requires SSL. Try adding '?sslmode=require' to DATABASE_URL.")
+        print(
+            "Hint: Supabase often requires SSL. Try adding '?sslmode=require' to DATABASE_URL."
+        )
     if not ok_tcp and port == 5432 and "supabase.co" in host:
-        print("Hint: If direct DB port is blocked on your network, use Supabase pooler connection string/port from dashboard.")
+        print(
+            "Hint: If direct DB port is blocked on your network, use Supabase pooler connection string/port from dashboard."
+        )
     return 1
 
 

@@ -69,7 +69,9 @@ class DGFTCollector(BaseCollector):
         if not events:
             for link in soup.select("a[href]"):
                 text = link.get_text(strip=True).lower()
-                if any(kw in text for kw in ["notification", "circular", "public notice"]):
+                if any(
+                    kw in text for kw in ["notification", "circular", "public notice"]
+                ):
                     href = link.get("href", "")
                     origin = self.get_source_origin() or "https://dgft.gov.in"
                     full_url = href if href.startswith("http") else f"{origin}{href}"

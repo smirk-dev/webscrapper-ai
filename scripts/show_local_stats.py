@@ -4,7 +4,10 @@ con = sqlite3.connect("advuman_local.db")
 cur = con.cursor()
 
 print("events=", cur.execute("select count(1) from events").fetchone()[0])
-print("weighted_scores=", cur.execute("select count(1) from weighted_scores").fetchone()[0])
+print(
+    "weighted_scores=",
+    cur.execute("select count(1) from weighted_scores").fetchone()[0],
+)
 print("snapshots=", cur.execute("select count(1) from index_snapshots").fetchone()[0])
 print("lane_health=", cur.execute("select count(1) from lane_health").fetchone()[0])
 print(

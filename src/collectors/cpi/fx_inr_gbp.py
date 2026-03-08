@@ -53,7 +53,11 @@ class FXINRGBPCollector(BaseCollector):
 
         # XE embeds the conversion result in a <p> with class containing "result"
         rate_text = ""
-        rate_el = soup.find("p", class_=lambda c: c and "result" in c.lower()) if soup else None
+        rate_el = (
+            soup.find("p", class_=lambda c: c and "result" in c.lower())
+            if soup
+            else None
+        )
         if rate_el:
             rate_text = rate_el.get_text(strip=True)
 

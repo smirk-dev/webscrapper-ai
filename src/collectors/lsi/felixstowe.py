@@ -55,7 +55,9 @@ class FelixstoweCollector(BaseCollector):
                 link = link_el.get("href", "") if link_el else ""
 
             if link and not link.startswith("http"):
-                origin = self.get_source_origin() or "https://www.portoffelixstowe.co.uk"
+                origin = (
+                    self.get_source_origin() or "https://www.portoffelixstowe.co.uk"
+                )
                 link = f"{origin}{link}"
 
             content_el = article.select_one("p, .excerpt, .summary")

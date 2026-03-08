@@ -32,7 +32,9 @@ async def _create_run_log(lane: str, trigger: str) -> int | None:
     from src.db.session import async_session
 
     async with async_session() as session:
-        lane_result = await session.execute(select(TradeLane).where(TradeLane.name == lane))
+        lane_result = await session.execute(
+            select(TradeLane).where(TradeLane.name == lane)
+        )
         lane_row = lane_result.scalar_one_or_none()
 
         run = PipelineRun(
@@ -48,7 +50,9 @@ async def _create_run_log(lane: str, trigger: str) -> int | None:
         return run.id
 
 
-async def _finalize_run_log(run_id: int | None, success: bool, details: str, error_summary: str | None) -> None:
+async def _finalize_run_log(
+    run_id: int | None, success: bool, details: str, error_summary: str | None
+) -> None:
     if run_id is None:
         return
 
@@ -58,7 +62,9 @@ async def _finalize_run_log(run_id: int | None, success: bool, details: str, err
     from src.db.session import async_session
 
     async with async_session() as session:
-        result = await session.execute(select(PipelineRun).where(PipelineRun.id == run_id))
+        result = await session.execute(
+            select(PipelineRun).where(PipelineRun.id == run_id)
+        )
         run = result.scalar_one_or_none()
         if run is None:
             return
@@ -81,7 +87,9 @@ def _run_command(args: list[str]) -> tuple[bool, str]:
     return result.returncode == 0, output.strip()
 
 
-def _job(lane: str, no_llm: bool, local: bool, sqlite_path: str, sheet_ingest: bool) -> None:
+def _job(
+    lane: str, no_llm: bool, local: bool, sqlite_path: str, sheet_ingest: bool
+) -> None:
     log.info("Starting scheduled run for lane=%s", lane)
     run_id = None
     try:
@@ -105,7 +113,10 @@ def _job(lane: str, no_llm: bool, local: bool, sqlite_path: str, sheet_ingest: b
         collectors_args.extend(["--local", "--sqlite-path", sqlite_path])
 
     ok_collectors, out_collectors = _run_command(collectors_args)
-    log.info("Collectors output (last 80 lines):\n%s", "\n".join(out_collectors.splitlines()[-80:]))
+    log.info(
+        "Collectors output (last 80 lines):\n%s",
+        "\n".join(out_collectors.splitlines()[-80:]),
+    )
     all_output.append(out_collectors)
 
     if not ok_collectors:
@@ -135,7 +146,9 @@ def _job(lane: str, no_llm: bool, local: bool, sqlite_path: str, sheet_ingest: b
 
         if not ok_ingest:
             # Non-fatal: log warning but continue to pipeline
-            log.warning("Sheet ingest stage failed (continuing to pipeline):\n%s", out_ingest)
+            log.warning(
+                "Sheet ingest stage failed (continuing to pipeline):\n%s", out_ingest
+            )
 
     # ── Stage 3: Quant pipeline ──────────────────────────────────────────────
     pipeline_args = ["scripts/run_pipeline.py", "--lane", lane]
@@ -143,7 +156,10 @@ def _job(lane: str, no_llm: bool, local: bool, sqlite_path: str, sheet_ingest: b
         pipeline_args.extend(["--local", "--sqlite-path", sqlite_path])
 
     ok_pipeline, out_pipeline = _run_command(pipeline_args)
-    log.info("Pipeline output (last 80 lines):\n%s", "\n".join(out_pipeline.splitlines()[-80:]))
+    log.info(
+        "Pipeline output (last 80 lines):\n%s",
+        "\n".join(out_pipeline.splitlines()[-80:]),
+    )
     all_output.append(out_pipeline)
 
     if not ok_pipeline:
@@ -176,17 +192,25 @@ def _job(lane: str, no_llm: bool, local: bool, sqlite_path: str, sheet_ingest: b
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Schedule periodic source sync + scrape + pipeline runs")
+    parser = argparse.ArgumentParser(
+        description="Schedule periodic source sync + scrape + pipeline runs"
+    )
     parser.add_argument("--lane", default="UK-India", help="Trade lane name")
-    parser.add_argument("--no-llm", action="store_true", help="Disable LLM classification")
-    parser.add_argument("--minutes", type=int, default=60, help="Run interval in minutes")
+    parser.add_argument(
+        "--no-llm", action="store_true", help="Disable LLM classification"
+    )
+    parser.add_argument(
+        "--minutes", type=int, default=60, help="Run interval in minutes"
+    )
     parser.add_argument(
         "--daily-at",
         default="",
         help="Optional HH:MM (24h) to run once daily instead of interval",
     )
     parser.add_argument("--local", action="store_true", help="Use local SQLite DB")
-    parser.add_argument("--sqlite-path", default="advuman_local.db", help="SQLite DB file path")
+    parser.add_argument(
+        "--sqlite-path", default="advuman_local.db", help="SQLite DB file path"
+    )
     parser.add_argument(
         "--sheet-ingest",
         action="store_true",
@@ -215,7 +239,12 @@ def main() -> None:
             id="advuman_daily_run",
             replace_existing=True,
         )
-        log.info("Scheduled daily run at %s for lane=%s (sheet_ingest=%s)", args.daily_at, args.lane, args.sheet_ingest)
+        log.info(
+            "Scheduled daily run at %s for lane=%s (sheet_ingest=%s)",
+            args.daily_at,
+            args.lane,
+            args.sheet_ingest,
+        )
     else:
         scheduler.add_job(
             _job,

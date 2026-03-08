@@ -4,7 +4,12 @@ Formula: WeightedScore = Delta × SourceWeight × StatusWeight × ConfidenceWeig
 """
 
 from src.db.models import ConfidenceLevel, EventStatus, SourceLayer
-from src.db.seed import CONFIDENCE_WEIGHTS, PRECEDENT_WEIGHTS, SOURCE_WEIGHTS, STATUS_WEIGHTS
+from src.db.seed import (
+    CONFIDENCE_WEIGHTS,
+    PRECEDENT_WEIGHTS,
+    SOURCE_WEIGHTS,
+    STATUS_WEIGHTS,
+)
 
 
 def compute_weighted_score(

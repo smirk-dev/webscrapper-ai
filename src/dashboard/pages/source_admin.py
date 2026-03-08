@@ -31,7 +31,9 @@ from src.db.session import async_session
 from sqlalchemy import select
 
 st.title("Source Admin")
-st.caption("Current source configuration resolved from Google Sheets CSV and collector defaults.")
+st.caption(
+    "Current source configuration resolved from Google Sheets CSV and collector defaults."
+)
 
 
 async def _load_overrides() -> dict[str, SourceOverride]:
@@ -70,10 +72,14 @@ if validate_clicked and sheet_location:
     with st.spinner("Fetching sheet config…"):
         try:
             fresh_overrides = asyncio.run(_load_overrides())
-            st.success(f"Sheet loaded successfully — {len(fresh_overrides)} collector override(s) found.")
+            st.success(
+                f"Sheet loaded successfully — {len(fresh_overrides)} collector override(s) found."
+            )
             for name, ov in fresh_overrides.items():
                 status = "✅ enabled" if ov.enabled else "🚫 disabled"
-                st.write(f"- **{name}**: {status}  |  source_name={ov.source_name or '(default)'}  |  freq={ov.check_frequency or '(default)'}")
+                st.write(
+                    f"- **{name}**: {status}  |  source_name={ov.source_name or '(default)'}  |  freq={ov.check_frequency or '(default)'}"
+                )
         except Exception as exc:
             st.error(f"Sheet validation failed: {exc}")
 
@@ -84,15 +90,29 @@ for name in collectors:
     collector = cls()
     override = overrides.get(name)
 
-    effective_name = override.source_name if override and override.source_name else collector.source_name
-    effective_source_url = override.source_url if override and override.source_url else collector.source_url
+    effective_name = (
+        override.source_name
+        if override and override.source_name
+        else collector.source_name
+    )
+    effective_source_url = (
+        override.source_url
+        if override and override.source_url
+        else collector.source_url
+    )
     effective_scrape_url = (
         override.scrape_url
         if override and override.scrape_url
-        else (override.source_url if override and override.source_url else collector.get_scrape_url())
+        else (
+            override.source_url
+            if override and override.source_url
+            else collector.get_scrape_url()
+        )
     )
     effective_frequency = (
-        override.check_frequency if override and override.check_frequency else collector.check_frequency
+        override.check_frequency
+        if override and override.check_frequency
+        else collector.check_frequency
     )
     enabled = True if override is None else override.enabled
 
@@ -117,7 +137,10 @@ c2.metric("Enabled", int(frame["enabled"].sum()) if not frame.empty else 0)
 c3.metric("Disabled", int((~frame["enabled"]).sum()) if not frame.empty else 0)
 
 st.subheader("Effective Runtime Config")
-st.dataframe(frame.sort_values(["enabled", "collector"], ascending=[False, True]), use_container_width=True)
+st.dataframe(
+    frame.sort_values(["enabled", "collector"], ascending=[False, True]),
+    use_container_width=True,
+)
 
 csv = frame.to_csv(index=False)
 st.download_button(
@@ -133,14 +156,21 @@ st.subheader("OSINT Event Sheet Config")
 osint_sheet_id = settings.osint_sheet_id
 osint_sheet_gids = settings.osint_sheet_gids
 if osint_sheet_id:
-    st.caption("Lanes configured for Google Sheets event ingestion (via `ingest_from_sheet.py` or scheduler `--sheet-ingest`).")
-    gid_rows = [{"lane": lane, "gid": gid, "csv_url": settings.sheet_tab_url(lane)} for lane, gid in osint_sheet_gids.items()]
+    st.caption(
+        "Lanes configured for Google Sheets event ingestion (via `ingest_from_sheet.py` or scheduler `--sheet-ingest`)."
+    )
+    gid_rows = [
+        {"lane": lane, "gid": gid, "csv_url": settings.sheet_tab_url(lane)}
+        for lane, gid in osint_sheet_gids.items()
+    ]
     st.dataframe(pd.DataFrame(gid_rows), use_container_width=True)
     st.info(
-        "To add a new lane: set `OSINT_SHEET_GIDS='{\"UK-India\": 834780247, \"NewLane\": <gid>}'` in your `.env` file."
+        'To add a new lane: set `OSINT_SHEET_GIDS=\'{"UK-India": 834780247, "NewLane": <gid>}\'` in your `.env` file.'
     )
 else:
-    st.warning("OSINT_SHEET_ID is not configured. Sheet event ingestion is unavailable.")
+    st.warning(
+        "OSINT_SHEET_ID is not configured. Sheet event ingestion is unavailable."
+    )
 
 st.divider()
 st.subheader("Recent Automation Runs")

@@ -85,7 +85,10 @@ class CarrierCollector(BaseCollector):
 
             # Filter for India/UK relevance
             combined = f"{title} {content}".lower()
-            if any(kw in combined for kw in ["india", "uk", "europe", "blank", "service change"]):
+            if any(
+                kw in combined
+                for kw in ["india", "uk", "europe", "blank", "service change"]
+            ):
                 events.append(
                     RawEvent(
                         title=title,

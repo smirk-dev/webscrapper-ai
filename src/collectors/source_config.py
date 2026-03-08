@@ -56,7 +56,9 @@ def parse_source_overrides(rows: list[dict[str, Any]]) -> dict[str, SourceOverri
     overrides: dict[str, SourceOverride] = {}
 
     for row in rows:
-        collector = _clean_value(row.get("collector") or row.get("source") or row.get("name")).lower()
+        collector = _clean_value(
+            row.get("collector") or row.get("source") or row.get("name")
+        ).lower()
         if not collector:
             continue
 

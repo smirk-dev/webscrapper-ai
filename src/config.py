@@ -31,11 +31,11 @@ class Settings(BaseSettings):
     ewma_lambda_cpi: float = 0.048
 
     # CUSUM parameters
-    cusum_k: float = 0.5   # reference value (detects 1-sigma shifts)
-    cusum_h: float = 4.5   # control limit (alarm threshold)
+    cusum_k: float = 0.5  # reference value (detects 1-sigma shifts)
+    cusum_h: float = 4.5  # control limit (alarm threshold)
 
     # Lane Health thresholds
-    lane_health_watch: int = 4   # combined >= 4 → WATCH
+    lane_health_watch: int = 4  # combined >= 4 → WATCH
     lane_health_active: int = 8  # combined >= 8 → ACTIVE
 
     @field_validator("database_url", mode="before")
@@ -47,12 +47,18 @@ class Settings(BaseSettings):
         normalized = value.strip().strip('"').strip("'")
         if normalized.startswith("postgres://"):
             normalized = "postgresql+asyncpg://" + normalized[len("postgres://") :]
-        elif normalized.startswith("postgresql://") and not normalized.startswith("postgresql+asyncpg://"):
+        elif normalized.startswith("postgresql://") and not normalized.startswith(
+            "postgresql+asyncpg://"
+        ):
             normalized = "postgresql+asyncpg://" + normalized[len("postgresql://") :]
 
         return normalized
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "env_parse_none_str": "null"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "env_parse_none_str": "null",
+    }
 
 
 settings = Settings()

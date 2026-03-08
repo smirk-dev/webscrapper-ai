@@ -36,7 +36,10 @@ async def ingest_lane(lane_name: str, dry_run: bool) -> dict | None:
     try:
         url = settings.sheet_tab_url(lane_name)
     except KeyError:
-        log.error("No sheet GID configured for lane '%s'. Check OSINT_SHEET_GIDS in .env", lane_name)
+        log.error(
+            "No sheet GID configured for lane '%s'. Check OSINT_SHEET_GIDS in .env",
+            lane_name,
+        )
         return None
 
     log.info("Ingesting lane: %s  url=%s", lane_name, url)
