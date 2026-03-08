@@ -179,6 +179,14 @@ class Event(Base):
     analyst_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     reviewed: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # Column 19: Severity (analyst-assigned, from sheet)
+    severity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Deduplication fingerprint for sheet-ingested rows
+    sheet_row_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

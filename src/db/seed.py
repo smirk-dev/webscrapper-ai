@@ -32,9 +32,9 @@ STATUS_WEIGHTS = {
 }
 
 CONFIDENCE_WEIGHTS = {
-    "High": 1.0,
-    "Medium": 0.7,
-    "Low": 0.4,
+    "High": 0.9,
+    "Medium": 0.6,
+    "Low": 0.3,
 }
 
 PRECEDENT_WEIGHTS = {

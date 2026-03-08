@@ -27,7 +27,7 @@ def compute_weighted_score(
 
 
 def test_dgft_interest_subvention():
-    """From Danha's sprint plan: DGFT Interest Subvention = -1 × 1.0 × 0.4 × 1.0 × 1.0 = -0.4"""
+    """DGFT Interest Subvention = -1 × 1.0 × 0.4 × 0.9 × 1.0 = -0.36"""
     score = compute_weighted_score(
         delta=-1,
         source_layer=SourceLayer.PRIMARY,
@@ -35,11 +35,11 @@ def test_dgft_interest_subvention():
         confidence="High",
         historical_precedent=True,
     )
-    assert score == pytest.approx(-0.4)
+    assert score == pytest.approx(-0.36)
 
 
 def test_felixstowe_storm():
-    """From Danha's sprint plan: Felixstowe Storm = +1 × 0.8 × 1.0 × 1.0 × 1.0 = +0.8"""
+    """Felixstowe Storm = +1 × 0.8 × 1.0 × 0.9 × 1.0 = +0.72"""
     score = compute_weighted_score(
         delta=+1,
         source_layer=SourceLayer.LOGISTICS,
@@ -47,7 +47,7 @@ def test_felixstowe_storm():
         confidence="High",
         historical_precedent=True,
     )
-    assert score == pytest.approx(0.8)
+    assert score == pytest.approx(0.72)
 
 
 def test_novel_event_gets_higher_weight():
@@ -79,8 +79,8 @@ def test_low_confidence_industry_draft():
         confidence="Low",
         historical_precedent=True,
     )
-    # 1 × 0.6 × 0.4 × 0.4 × 1.0 = 0.096
-    assert score == pytest.approx(0.096)
+    # 1 × 0.6 × 0.4 × 0.3 × 1.0 = 0.072
+    assert score == pytest.approx(0.072)
 
 
 import pytest
