@@ -7,10 +7,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     sources_sheet_csv_url: str = ""
 
-    # Google Sheets OSINT event log.
-    # Override via .env:
-    #   OSINT_SHEET_ID=<your-sheet-id>
-    #   OSINT_SHEET_GIDS='{"UK-India": 834780247, "UK-Egypt": 843292959}'
+    # Google Sheets OSINT event log
     osint_sheet_id: str = "1QmssLXafz3g3nOJ6YJpfHCd53LmD4MVgaiarbxGlmtM"
     osint_sheet_gids: dict[str, int] = {
         "UK-India": 834780247,

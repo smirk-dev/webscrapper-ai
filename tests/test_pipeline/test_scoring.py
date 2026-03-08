@@ -83,3 +83,6 @@ def test_low_confidence_industry_draft():
     )
     # 1 × 0.6 × 0.4 × 0.3 × 1.0 = 0.072
     assert score == pytest.approx(0.072)
+
+
+import pytest

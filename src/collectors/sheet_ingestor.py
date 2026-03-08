@@ -98,7 +98,6 @@ def _map_event_type(raw: str) -> EventType:
 
 # ── Enum helpers ─────────────────────────────────────────────────────────────
 
-
 def _parse_source_layer(raw: str) -> SourceLayer:
     try:
         return SourceLayer(raw.strip().title())
@@ -147,7 +146,6 @@ def _parse_severity(raw: str) -> int | None:
 
 # ── Row hash for deduplication ───────────────────────────────────────────────
 
-
 def _compute_row_hash(
     date_observed: date,
     source_name: str,
@@ -166,7 +164,6 @@ def _compute_row_hash(
 
 
 # ── Parsed row dataclass ────────────────────────────────────────────────────
-
 
 @dataclass
 class SheetRow:
@@ -194,7 +191,6 @@ class SheetRow:
 
 # ── Header detection ────────────────────────────────────────────────────────
 
-
 def _is_header_row(first_val: str) -> bool:
     try:
         datetime.strptime(first_val.strip(), "%d/%m/%Y")
@@ -204,7 +200,6 @@ def _is_header_row(first_val: str) -> bool:
 
 
 # ── CSV row parser ──────────────────────────────────────────────────────────
-
 
 def parse_rows(csv_text: str) -> tuple[list[SheetRow], list[str]]:
     """Parse CSV text into SheetRow objects.
@@ -294,30 +289,28 @@ def parse_rows(csv_text: str) -> tuple[list[SheetRow], list[str]]:
             date_observed, source_name, index_impact, index_delta, event_description
         )
 
-        rows.append(
-            SheetRow(
-                date_observed=date_observed,
-                source_layer=source_layer,
-                source_name=source_name,
-                source_url=source_url,
-                event_type=event_type,
-                jurisdiction=jurisdiction,
-                sector=sector,
-                affected_object=affected_object,
-                event_description=event_description,
-                event_status=event_status,
-                confidence_level=confidence_level,
-                historical_precedent=historical_precedent,
-                impact_pathway=impact_pathway,
-                quant_metric_triggered=quant_metric_triggered,
-                index_impact=index_impact,
-                index_delta=index_delta,
-                analyst_notes=analyst_notes,
-                reviewed=reviewed,
-                severity=severity,
-                row_hash=row_hash,
-            )
-        )
+        rows.append(SheetRow(
+            date_observed=date_observed,
+            source_layer=source_layer,
+            source_name=source_name,
+            source_url=source_url,
+            event_type=event_type,
+            jurisdiction=jurisdiction,
+            sector=sector,
+            affected_object=affected_object,
+            event_description=event_description,
+            event_status=event_status,
+            confidence_level=confidence_level,
+            historical_precedent=historical_precedent,
+            impact_pathway=impact_pathway,
+            quant_metric_triggered=quant_metric_triggered,
+            index_impact=index_impact,
+            index_delta=index_delta,
+            analyst_notes=analyst_notes,
+            reviewed=reviewed,
+            severity=severity,
+            row_hash=row_hash,
+        ))
 
     return rows, errors
 
@@ -332,7 +325,9 @@ LANE_SECTOR_MAP = {
 
 
 async def _get_or_create_lane(session: AsyncSession, lane_name: str) -> TradeLane:
-    result = await session.execute(select(TradeLane).where(TradeLane.name == lane_name))
+    result = await session.execute(
+        select(TradeLane).where(TradeLane.name == lane_name)
+    )
     lane = result.scalar_one_or_none()
     if lane:
         return lane
@@ -378,7 +373,6 @@ async def _find_or_create_source(
 
 
 # ── Main ingestor ───────────────────────────────────────────────────────────
-
 
 class SheetIngestor:
     """Fetch, parse, deduplicate, and persist events from a Google Sheet tab."""
@@ -483,16 +477,14 @@ class SheetIngestor:
                     confidence_level=row.confidence_level,
                     historical_precedent=row.historical_precedent,
                 )
-                session.add(
-                    WeightedScore(
-                        event_id=event.id,
-                        weighted_score=score,
-                        source_weight=src_w,
-                        status_weight=stat_w,
-                        confidence_weight=conf_w,
-                        precedent_weight=prec_w,
-                    )
-                )
+                session.add(WeightedScore(
+                    event_id=event.id,
+                    weighted_score=score,
+                    source_weight=src_w,
+                    status_weight=stat_w,
+                    confidence_weight=conf_w,
+                    precedent_weight=prec_w,
+                ))
                 stats["inserted"] += 1
 
             await session.commit()
