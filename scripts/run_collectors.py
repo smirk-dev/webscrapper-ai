@@ -154,8 +154,16 @@ def _heuristic_delta(index_type: IndexType, text: str) -> tuple[int, str, str, s
 def _fallback_classify(raw_event, collector) -> ClassifiedEvent:
     text = f"{raw_event.title} {raw_event.content or ''}".lower()
     delta, event_type, pathway, metric = _heuristic_delta(collector.primary_index, text)
-    status = EventStatus.ENFORCED if _contains_any(text, ["effective", "in force", "implemented"]) else EventStatus.ANNOUNCED
-    confidence = ConfidenceLevel.HIGH if collector.source_layer in {SourceLayer.PRIMARY, SourceLayer.LOGISTICS} else ConfidenceLevel.MEDIUM
+    status = (
+        EventStatus.ENFORCED
+        if _contains_any(text, ["effective", "in force", "implemented"])
+        else EventStatus.ANNOUNCED
+    )
+    confidence = (
+        ConfidenceLevel.HIGH
+        if collector.source_layer in {SourceLayer.PRIMARY, SourceLayer.LOGISTICS}
+        else ConfidenceLevel.MEDIUM
+    )
 
     return ClassifiedEvent(
         date_observed=raw_event.published_date or date.today(),
@@ -223,10 +231,14 @@ async def _persist_events(events, collector, lane_name: str, use_llm: bool) -> i
     from src.pipeline.scoring import compute_weighted_score
 
     async with async_session() as session:
-        lane_result = await session.execute(select(TradeLane).where(TradeLane.name == lane_name))
+        lane_result = await session.execute(
+            select(TradeLane).where(TradeLane.name == lane_name)
+        )
         lane = lane_result.scalar_one_or_none()
         if lane is None:
-            lane = TradeLane(name=lane_name, sector="Textiles", status=LaneStatus.ACTIVE)
+            lane = TradeLane(
+                name=lane_name, sector="Textiles", status=LaneStatus.ACTIVE
+            )
             session.add(lane)
             await session.flush()
 
@@ -312,13 +324,19 @@ def _apply_override(name: str, collector, override: SourceOverride | None) -> No
     if override.check_frequency:
         collector.check_frequency = override.check_frequency
 
-    collector.scrape_url = override.scrape_url or override.source_url or collector.source_url
+    collector.scrape_url = (
+        override.scrape_url or override.source_url or collector.source_url
+    )
 
 
-def _enabled_collectors(names: list[str], overrides: dict[str, SourceOverride]) -> list[str]:
+def _enabled_collectors(
+    names: list[str], overrides: dict[str, SourceOverride]
+) -> list[str]:
     if not overrides:
         return names
-    return [name for name in names if overrides.get(name) is None or overrides[name].enabled]
+    return [
+        name for name in names if overrides.get(name) is None or overrides[name].enabled
+    ]
 
 
 async def run_single(
@@ -329,9 +347,9 @@ async def run_single(
     use_llm: bool,
     overrides: dict[str, SourceOverride],
 ) -> None:
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Running collector: {name}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     collector_cls = get_collector(name)
     collector = collector_cls()
@@ -381,12 +399,16 @@ async def main(args: argparse.Namespace) -> None:
         if overrides:
             disabled = sorted(set(list_collectors()) - set(names))
             if disabled:
-                print(f"Skipping disabled collectors from source config: {', '.join(disabled)}")
+                print(
+                    f"Skipping disabled collectors from source config: {', '.join(disabled)}"
+                )
     else:
         names = args.source
         for name in names:
             if overrides.get(name) is not None and not overrides[name].enabled:
-                print(f"WARNING: Collector '{name}' is disabled in source config but was explicitly requested.")
+                print(
+                    f"WARNING: Collector '{name}' is disabled in source config but was explicitly requested."
+                )
 
     if not names:
         print("No collectors specified. Use --all or --source <name>")
@@ -407,12 +429,30 @@ async def main(args: argparse.Namespace) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Advuman OSINT collectors")
     parser.add_argument("--all", action="store_true", help="Run all collectors")
-    parser.add_argument("--source", nargs="+", default=[], help="Specific collector(s) to run")
+    parser.add_argument(
+        "--source", nargs="+", default=[], help="Specific collector(s) to run"
+    )
     parser.add_argument("--list", action="store_true", help="List available collectors")
-    parser.add_argument("--persist", action="store_true", help="Persist collected events to database")
-    parser.add_argument("--lane", default="UK-India", help="Trade lane name used for persistence")
-    parser.add_argument("--no-llm", action="store_true", help="Disable LLM classification and use fallback classification")
-    parser.add_argument("--local", action="store_true", help="Use local SQLite DB for offline development")
-    parser.add_argument("--sqlite-path", default="advuman_local.db", help="SQLite file path used with --local")
+    parser.add_argument(
+        "--persist", action="store_true", help="Persist collected events to database"
+    )
+    parser.add_argument(
+        "--lane", default="UK-India", help="Trade lane name used for persistence"
+    )
+    parser.add_argument(
+        "--no-llm",
+        action="store_true",
+        help="Disable LLM classification and use fallback classification",
+    )
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Use local SQLite DB for offline development",
+    )
+    parser.add_argument(
+        "--sqlite-path",
+        default="advuman_local.db",
+        help="SQLite file path used with --local",
+    )
     args = parser.parse_args()
     asyncio.run(main(args))

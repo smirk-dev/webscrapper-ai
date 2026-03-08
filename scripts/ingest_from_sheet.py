@@ -11,12 +11,20 @@ Usage:
 
 import argparse
 import asyncio
+import logging
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+log = logging.getLogger("advuman.sheet_ingest")
 
 LANE_NAMES = ["UK-India", "UK-Egypt"]
 
@@ -28,25 +36,28 @@ async def ingest_lane(lane_name: str, dry_run: bool) -> dict | None:
     try:
         url = settings.sheet_tab_url(lane_name)
     except KeyError:
-        print(f"ERROR: No sheet GID configured for lane '{lane_name}'.")
-        print("  Check osint_sheet_gids in src/config.py or OSINT_SHEET_GIDS in .env")
+        log.error(
+            "No sheet GID configured for lane '%s'. Check OSINT_SHEET_GIDS in .env",
+            lane_name,
+        )
         return None
 
-    print(f"\n{'=' * 60}")
-    print(f"  Ingesting lane: {lane_name}")
-    print(f"  URL: {url}")
-    print(f"{'=' * 60}")
+    log.info("Ingesting lane: %s  url=%s", lane_name, url)
 
     ingestor = SheetIngestor(lane_name=lane_name, dry_run=dry_run)
     try:
         stats = await ingestor.ingest(url)
-        print(f"  Fetched rows:        {stats['fetched']}")
-        print(f"  Parse errors:        {stats['skipped_parse_error']}")
-        print(f"  Duplicates skipped:  {stats['skipped_duplicate']}")
-        print(f"  Inserted:            {stats['inserted']}")
+        log.info(
+            "Lane %s — fetched=%d  parse_errors=%d  duplicates=%d  inserted=%d",
+            lane_name,
+            stats["fetched"],
+            stats["skipped_parse_error"],
+            stats["skipped_duplicate"],
+            stats["inserted"],
+        )
         return stats
     except Exception as exc:
-        print(f"  ERROR: {exc}")
+        log.error("Ingest failed for lane %s: %s", lane_name, exc)
         return None
 
 
@@ -54,7 +65,7 @@ async def main(args: argparse.Namespace) -> None:
     if args.local:
         db_path = Path(args.sqlite_path).resolve()
         os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path.as_posix()}"
-        print(f"Using local SQLite DB: {db_path}")
+        log.info("Using local SQLite DB: %s", db_path)
 
     # Lazy import after env var is set so settings + engine pick up the right URL
     from src.db.models import Base
@@ -74,7 +85,7 @@ async def main(args: argparse.Namespace) -> None:
 
     if args.run_pipeline and not args.dry_run and total_inserted > 0:
         for lane in lanes:
-            print(f"\nRunning pipeline for {lane}...")
+            log.info("Running pipeline for %s...", lane)
             pipeline_args = [sys.executable, "scripts/run_pipeline.py", "--lane", lane]
             if args.local:
                 pipeline_args.extend(["--local", "--sqlite-path", args.sqlite_path])
@@ -82,9 +93,9 @@ async def main(args: argparse.Namespace) -> None:
                 pipeline_args, cwd=Path(__file__).resolve().parent.parent
             )
             if result.returncode != 0:
-                print(f"  Pipeline failed for {lane}")
+                log.error("Pipeline failed for lane %s", lane)
 
-    print(f"\nDone. Total inserted: {total_inserted}")
+    log.info("Done. Total inserted: %d", total_inserted)
 
 
 if __name__ == "__main__":

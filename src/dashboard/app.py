@@ -22,8 +22,11 @@ if "ANTHROPIC_API_KEY" in secrets and not os.getenv("ANTHROPIC_API_KEY"):
     os.environ["ANTHROPIC_API_KEY"] = secrets["ANTHROPIC_API_KEY"]
 
 if not os.getenv("DATABASE_URL"):
-    st.error("DATABASE_URL is not configured. Set it in Streamlit secrets or environment variables.")
+    st.error(
+        "DATABASE_URL is not configured. Set it in Streamlit secrets or environment variables."
+    )
     st.stop()
+
 
 def build_navigation():
     st.set_page_config(
@@ -37,10 +40,19 @@ def build_navigation():
 
     return st.navigation(
         [
-            st.Page(str(pages_dir / "lane_overview.py"), title="Lane Overview", icon="📊", default=True),
+            st.Page(
+                str(pages_dir / "lane_overview.py"),
+                title="Lane Overview",
+                icon="📊",
+                default=True,
+            ),
             st.Page(str(pages_dir / "signal_log.py"), title="Signal Log", icon="📋"),
-            st.Page(str(pages_dir / "index_charts.py"), title="Index Charts", icon="📈"),
-            st.Page(str(pages_dir / "source_admin.py"), title="Source Admin", icon="🧭"),
+            st.Page(
+                str(pages_dir / "index_charts.py"), title="Index Charts", icon="📈"
+            ),
+            st.Page(
+                str(pages_dir / "source_admin.py"), title="Source Admin", icon="🧭"
+            ),
         ]
     )
 

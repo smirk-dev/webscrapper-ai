@@ -50,12 +50,18 @@ async def get_events():
             .where(Event.date_observed >= start_date)
         )
         if index_filter:
-            query = query.where(Event.index_impact.in_([IndexType(v) for v in index_filter]))
+            query = query.where(
+                Event.index_impact.in_([IndexType(v) for v in index_filter])
+            )
         if type_filter:
-            query = query.where(Event.event_type.in_([EventType(v) for v in type_filter]))
+            query = query.where(
+                Event.event_type.in_([EventType(v) for v in type_filter])
+            )
         if confidence_filter:
             query = query.where(
-                Event.confidence_level.in_([ConfidenceLevel(v) for v in confidence_filter])
+                Event.confidence_level.in_(
+                    [ConfidenceLevel(v) for v in confidence_filter]
+                )
             )
         if reviewed_only:
             query = query.where(Event.reviewed.is_(True))
@@ -74,20 +80,22 @@ except Exception as e:
 if events:
     data = []
     for e in events:
-        data.append({
-            "Date": e.date_observed,
-            "Source": e.source_name,
-            "Type": e.event_type.value,
-            "Jurisdiction": e.jurisdiction.value,
-            "Description": e.event_description[:100],
-            "Status": e.event_status.value,
-            "Confidence": e.confidence_level.value,
-            "Precedent": "Yes" if e.historical_precedent else "No",
-            "Pathway": e.impact_pathway,
-            "Index": e.index_impact.value,
-            "Delta": e.index_delta,
-            "Reviewed": "Yes" if e.reviewed else "No",
-        })
+        data.append(
+            {
+                "Date": e.date_observed,
+                "Source": e.source_name,
+                "Type": e.event_type.value,
+                "Jurisdiction": e.jurisdiction.value,
+                "Description": e.event_description[:100],
+                "Status": e.event_status.value,
+                "Confidence": e.confidence_level.value,
+                "Precedent": "Yes" if e.historical_precedent else "No",
+                "Pathway": e.impact_pathway,
+                "Index": e.index_impact.value,
+                "Delta": e.index_delta,
+                "Reviewed": "Yes" if e.reviewed else "No",
+            }
+        )
 
     df = pd.DataFrame(data)
     st.dataframe(df, use_container_width=True, height=500)

@@ -13,7 +13,7 @@ from src.db.models import (
     SourceLayer,
     TradeLane,
 )
-from src.db.session import async_session, engine
+from src.db.session import async_session
 
 
 # ── Weight matrix (from Danha's sprint plan) ─────────────────────────────────
@@ -39,7 +39,7 @@ CONFIDENCE_WEIGHTS = {
 
 PRECEDENT_WEIGHTS = {
     False: 1.2,  # Novel (no precedent) — higher attention
-    True: 1.0,   # Known precedent
+    True: 1.0,  # Known precedent
 }
 
 

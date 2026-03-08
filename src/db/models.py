@@ -155,7 +155,9 @@ class Event(Base):
 
     # Columns 5-9: Event classification
     event_type: Mapped[EventType] = mapped_column(Enum(EventType), nullable=False)
-    jurisdiction: Mapped[Jurisdiction] = mapped_column(Enum(Jurisdiction), nullable=False)
+    jurisdiction: Mapped[Jurisdiction] = mapped_column(
+        Enum(Jurisdiction), nullable=False
+    )
     sector: Mapped[str] = mapped_column(String(100), nullable=False)
     affected_object: Mapped[str] = mapped_column(String(300), nullable=False)
     event_description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -269,9 +271,7 @@ class LaneHealth(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    trade_lane: Mapped["TradeLane"] = relationship(
-        back_populates="lane_health_records"
-    )
+    trade_lane: Mapped["TradeLane"] = relationship(back_populates="lane_health_records")
 
 
 class PipelineRun(Base):
@@ -280,13 +280,25 @@ class PipelineRun(Base):
     __tablename__ = "pipeline_runs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    trade_lane_id: Mapped[int | None] = mapped_column(ForeignKey("trade_lanes.id"), nullable=True)
+    trade_lane_id: Mapped[int | None] = mapped_column(
+        ForeignKey("trade_lanes.id"), nullable=True
+    )
     trigger: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
-    stage: Mapped[str] = mapped_column(String(30), nullable=False, default="collectors+pipeline")
-    status: Mapped[RunStatus] = mapped_column(Enum(RunStatus), nullable=False, default=RunStatus.STARTED)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stage: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="collectors+pipeline"
+    )
+    status: Mapped[RunStatus] = mapped_column(
+        Enum(RunStatus), nullable=False, default=RunStatus.STARTED
+    )
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    trade_lane: Mapped["TradeLane | None"] = relationship(back_populates="pipeline_runs")
+    trade_lane: Mapped["TradeLane | None"] = relationship(
+        back_populates="pipeline_runs"
+    )

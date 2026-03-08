@@ -14,6 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+
 async def run_pipeline(lane_name: str, week_start: date | None = None) -> None:
     from sqlalchemy import select
 
@@ -90,12 +91,14 @@ async def run_pipeline(lane_name: str, week_start: date | None = None) -> None:
                 cpi_total += event.index_delta
                 cpi_weighted += score
 
-            attribution_data.append({
-                "weighted_score": score,
-                "source_layer": event.source_layer.value,
-                "impact_pathway": event.impact_pathway,
-                "jurisdiction": event.jurisdiction.value,
-            })
+            attribution_data.append(
+                {
+                    "weighted_score": score,
+                    "source_layer": event.source_layer.value,
+                    "impact_pathway": event.impact_pathway,
+                    "jurisdiction": event.jurisdiction.value,
+                }
+            )
 
             print(
                 f"  {event.date_observed} | {event.index_impact.value:3s} "
@@ -106,8 +109,8 @@ async def run_pipeline(lane_name: str, week_start: date | None = None) -> None:
         # Lane Health
         combined, health = compute_lane_health(rpi_total, lsi_total, cpi_total)
 
-        print(f"\n{'─'*60}")
-        print(f"WEEKLY ROLL-UP:")
+        print(f"\n{'─' * 60}")
+        print("WEEKLY ROLL-UP:")
         print(f"  RPI Total:  {rpi_total:+.0f}")
         print(f"  LSI Total:  {lsi_total:+.0f}")
         print(f"  CPI Total:  {cpi_total:+.0f}")
@@ -181,8 +184,14 @@ async def run_pipeline(lane_name: str, week_start: date | None = None) -> None:
             cusum_lower = None
             if idx_type == IndexType.RPI:
                 detector = CUSUMDetector(k=settings.cusum_k, h=settings.cusum_h)
-                if previous and previous.cusum_upper is not None and previous.cusum_lower is not None:
-                    detector.state = CUSUMState(upper=previous.cusum_upper, lower=previous.cusum_lower)
+                if (
+                    previous
+                    and previous.cusum_upper is not None
+                    and previous.cusum_lower is not None
+                ):
+                    detector.state = CUSUMState(
+                        upper=previous.cusum_upper, lower=previous.cusum_lower
+                    )
                 if z_score is not None:
                     state, _ = detector.update(z_score)
                     cusum_upper = state.upper
@@ -224,7 +233,7 @@ async def run_pipeline(lane_name: str, week_start: date | None = None) -> None:
         # Attribution
         if attribution_data:
             attr = compute_attribution(attribution_data)
-            print(f"\nATTRIBUTION:")
+            print("\nATTRIBUTION:")
             for dim, values in attr.items():
                 if values:
                     breakdown = " | ".join(f"{k}: {v:.0%}" for k, v in values.items())

@@ -63,7 +63,9 @@ def run_local_schema_create() -> None:
     from src.db.models import Base
 
     async def _create() -> None:
-        engine = create_async_engine(settings.database_url, **get_async_engine_options(settings.database_url))
+        engine = create_async_engine(
+            settings.database_url, **get_async_engine_options(settings.database_url)
+        )
         async with engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)
         await engine.dispose()
@@ -79,7 +81,9 @@ def ensure_schema_exists() -> None:
     from src.db.models import Base
 
     async def _create() -> None:
-        engine = create_async_engine(settings.database_url, **get_async_engine_options(settings.database_url))
+        engine = create_async_engine(
+            settings.database_url, **get_async_engine_options(settings.database_url)
+        )
         async with engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)
         await engine.dispose()

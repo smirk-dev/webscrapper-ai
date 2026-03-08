@@ -50,7 +50,9 @@ class JNPTCollector(BaseCollector):
             async with async_playwright() as p:
                 browser = await p.chromium.launch(headless=True)
                 page = await browser.new_page()
-                await page.goto(self.get_scrape_url(), wait_until="domcontentloaded", timeout=30000)
+                await page.goto(
+                    self.get_scrape_url(), wait_until="domcontentloaded", timeout=30000
+                )
                 html = await page.content()
                 await browser.close()
                 return await self.parse(html)
@@ -87,7 +89,10 @@ class JNPTCollector(BaseCollector):
         # Also check for any linked PDFs about operations
         for link in soup.select("a[href$='.pdf']"):
             text = link.get_text(strip=True)
-            if any(kw in text.lower() for kw in ["advisory", "congestion", "notice", "operation"]):
+            if any(
+                kw in text.lower()
+                for kw in ["advisory", "congestion", "notice", "operation"]
+            ):
                 href = link.get("href", "")
                 origin = self.get_source_origin() or "https://www.jnport.gov.in"
                 full_url = href if href.startswith("http") else f"{origin}{href}"

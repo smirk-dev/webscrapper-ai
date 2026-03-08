@@ -13,6 +13,10 @@ on:
       lane:
         description: "Trade lane to process"
         default: "UK-India"
+      skip_sheet_ingest:
+        description: "Skip Google Sheets event ingestion"
+        type: boolean
+        default: false
 
 jobs:
   collect-and-pipeline:
@@ -50,6 +54,16 @@ jobs:
             ARGS="$ARGS --no-llm"
           fi
           python scripts/run_collectors.py $ARGS
+
+      - name: Ingest analyst events from Google Sheets
+        if: ${{ github.event.inputs.skip_sheet_ingest != 'true' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OSINT_SHEET_ID: ${{ secrets.OSINT_SHEET_ID }}
+          OSINT_SHEET_GIDS: ${{ secrets.OSINT_SHEET_GIDS }}
+        run: |
+          LANE="${{ github.event.inputs.lane || 'UK-India' }}"
+          python scripts/ingest_from_sheet.py --lane "$LANE"
 
       - name: Run quant pipeline
         env:

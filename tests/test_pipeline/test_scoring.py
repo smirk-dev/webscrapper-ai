@@ -1,12 +1,14 @@
 """Test the weighted scoring logic against Danha's sprint plan examples."""
 
+import pytest
+
+from src.db.models import SourceLayer
 from src.db.seed import (
     CONFIDENCE_WEIGHTS,
     PRECEDENT_WEIGHTS,
     SOURCE_WEIGHTS,
     STATUS_WEIGHTS,
 )
-from src.db.models import SourceLayer
 
 
 def compute_weighted_score(
@@ -81,6 +83,3 @@ def test_low_confidence_industry_draft():
     )
     # 1 × 0.6 × 0.4 × 0.3 × 1.0 = 0.072
     assert score == pytest.approx(0.072)
-
-
-import pytest

@@ -86,7 +86,9 @@ st.subheader("Z-Score Deviation from Baseline")
 
 fig_z = go.Figure()
 for idx_type in [IndexType.RPI, IndexType.LSI, IndexType.CPI]:
-    filtered = [s for s in snapshots if s.index_type == idx_type and s.z_score is not None]
+    filtered = [
+        s for s in snapshots if s.index_type == idx_type and s.z_score is not None
+    ]
     if filtered:
         fig_z.add_trace(
             go.Scatter(
@@ -107,7 +109,9 @@ st.plotly_chart(fig_z, use_container_width=True)
 # ── CUSUM ──
 st.subheader("CUSUM — Persistent Shift Detection (RPI)")
 
-rpi_snapshots = [s for s in snapshots if s.index_type == IndexType.RPI and s.cusum_upper is not None]
+rpi_snapshots = [
+    s for s in snapshots if s.index_type == IndexType.RPI and s.cusum_upper is not None
+]
 if rpi_snapshots:
     fig_c = go.Figure()
     fig_c.add_trace(
@@ -126,7 +130,9 @@ if rpi_snapshots:
             line=dict(color="#3498db"),
         )
     )
-    fig_c.add_hline(y=4.5, line_dash="dash", line_color="red", annotation_text="h=4.5 (alarm)")
+    fig_c.add_hline(
+        y=4.5, line_dash="dash", line_color="red", annotation_text="h=4.5 (alarm)"
+    )
     fig_c.add_hline(y=-4.5, line_dash="dash", line_color="red")
     fig_c.update_layout(height=350, yaxis_title="CUSUM Statistic")
     st.plotly_chart(fig_c, use_container_width=True)
@@ -143,13 +149,19 @@ if health_history:
         go.Bar(
             x=[h.week_start for h in health_history],
             y=[h.combined_total for h in health_history],
-            marker_color=[health_colors.get(h.health_status.value, "gray") for h in health_history],
+            marker_color=[
+                health_colors.get(h.health_status.value, "gray") for h in health_history
+            ],
             text=[h.health_status.value for h in health_history],
             textposition="outside",
         )
     )
-    fig_h.add_hline(y=4, line_dash="dash", line_color="orange", annotation_text="WATCH threshold")
-    fig_h.add_hline(y=8, line_dash="dash", line_color="red", annotation_text="ACTIVE threshold")
+    fig_h.add_hline(
+        y=4, line_dash="dash", line_color="orange", annotation_text="WATCH threshold"
+    )
+    fig_h.add_hline(
+        y=8, line_dash="dash", line_color="red", annotation_text="ACTIVE threshold"
+    )
     fig_h.update_layout(height=350, yaxis_title="Combined Total", xaxis_title="Week")
     st.plotly_chart(fig_h, use_container_width=True)
 else:
