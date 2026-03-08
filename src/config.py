@@ -7,6 +7,21 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     sources_sheet_csv_url: str = ""
 
+    # Google Sheets OSINT event log
+    osint_sheet_id: str = "1QmssLXafz3g3nOJ6YJpfHCd53LmD4MVgaiarbxGlmtM"
+    osint_sheet_gids: dict[str, int] = {
+        "UK-India": 834780247,
+        "UK-Egypt": 843292959,
+    }
+
+    def sheet_tab_url(self, lane: str) -> str:
+        """Build the CSV export URL for a lane's Google Sheet tab."""
+        gid = self.osint_sheet_gids[lane]
+        return (
+            f"https://docs.google.com/spreadsheets/d/{self.osint_sheet_id}"
+            f"/export?format=csv&gid={gid}"
+        )
+
     # EWMA decay parameters (lambda = 1 - 2^(-1/H), H = half-life in days)
     ewma_lambda_rpi: float = 0.048  # 14-day half-life
     ewma_lambda_lsi: float = 0.048
